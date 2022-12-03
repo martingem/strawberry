@@ -152,18 +152,6 @@ jobs:
       - name: make deb
         shell: bash
         run: dpkg-buildpackage -b -d -uc -us -nc -j2
-      - name: Jump one folder
-        shell: bash
-        run: cd ..
-      - name: List files
-        shell: bash
-        run: ls -R
-      - name: Jump one folder
-        shell: bash
-        run: cd ..
-      - name: List files
-        shell: bash
-        run: ls -R
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v3.1.1
         with:
