@@ -80,8 +80,8 @@ jobs:
 #      shell: bash
 #      run: dpkg-buildpackage -b -d -uc -us -nc -j2
         
-  build_ubuntu:
-    name: Build Ubuntu
+  build_popos:
+    name: Build PopOS
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -133,7 +133,6 @@ jobs:
             libmtp-dev
             libgpod-dev
       - name: Install Qt 5
-        if: matrix.ubuntu_version == 'bionic' || matrix.ubuntu_version == 'focal'
         env:
           DEBIAN_FRONTEND: noninteractive
         run: apt-get update && apt-get install -y qtbase5-dev qtbase5-dev-tools qttools5-dev qttools5-dev-tools libqt5x11extras5-dev
