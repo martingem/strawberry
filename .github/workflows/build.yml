@@ -2,83 +2,83 @@ name: build
 on: [workflow_dispatch]
 
 jobs:
-  build_debian:
-    name: Build Debian
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        debian_version: [ 'buster', 'bullseye', 'bookworm' ]
-    container:
-      image: debian:${{matrix.debian_version}}
-    steps:
-      - name: Update repositories
-        run: apt update
-      - name: Install packages
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: >
-            apt install -y
-            build-essential
-            dh-make
-            ssh
-            git
-            make
-            cmake
-            gcc
-            g++
-            pkg-config
-            fakeroot
-            gettext
-            lsb-release
-            libglib2.0-dev
-            dpkg-dev
-            libdbus-1-dev
-            libboost-dev
-            libprotobuf-dev
-            protobuf-compiler
-            libsqlite3-dev
-            libgnutls28-dev
-            libasound2-dev
-            libpulse-dev
-            libtag1-dev
-            libicu-dev
-            libgstreamer1.0-dev
-            libgstreamer-plugins-base1.0-dev
-            gstreamer1.0-alsa
-            gstreamer1.0-pulseaudio
-            libchromaprint-dev
-            libfftw3-dev
-            libcdio-dev
-            libmtp-dev
-            libgpod-dev
-      - name: Install Qt 5
-        if: matrix.debian_version == 'buster' || matrix.debian_version == 'bullseye'
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: >
-            apt install -y
-            qtbase5-dev
-            qtbase5-dev-tools
-            qttools5-dev
-            qttools5-dev-tools
-            libqt5x11extras5-dev
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Add safe git directory
-        shell: bash
-        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
-      - name: Create Build Environment
-        shell: bash
-        run: cmake -E make_directory build
-      - name: Configure CMake
-        shell: bash
-        working-directory: build
-        run: cmake .. -DBUILD_WITH_QT5=ON
-      - name: make deb
-        shell: bash
-        run: dpkg-buildpackage -b -d -uc -us -nc -j2
+#build_debian:
+#  name: Build Debian
+#  runs-on: ubuntu-latest
+#  strategy:
+#    fail-fast: false
+#    matrix:
+#      debian_version: [ 'buster', 'bullseye', 'bookworm' ]
+#  container:
+#    image: debian:${{matrix.debian_version}}
+#  steps:
+#    - name: Update repositories
+#      run: apt update
+#    - name: Install packages
+#      env:
+#        DEBIAN_FRONTEND: noninteractive
+#      run: >
+#          apt install -y
+#          build-essential
+#          dh-make
+#          ssh
+#          git
+#          make
+#          cmake
+#          gcc
+#          g++
+#          pkg-config
+#          fakeroot
+#          gettext
+#          lsb-release
+#          libglib2.0-dev
+#          dpkg-dev
+#          libdbus-1-dev
+#          libboost-dev
+#          libprotobuf-dev
+#          protobuf-compiler
+#          libsqlite3-dev
+#          libgnutls28-dev
+#          libasound2-dev
+#          libpulse-dev
+#          libtag1-dev
+#          libicu-dev
+#          libgstreamer1.0-dev
+#          libgstreamer-plugins-base1.0-dev
+#          gstreamer1.0-alsa
+#          gstreamer1.0-pulseaudio
+#          libchromaprint-dev
+#          libfftw3-dev
+#          libcdio-dev
+#          libmtp-dev
+#          libgpod-dev
+#    - name: Install Qt 5
+#      if: matrix.debian_version == 'buster' || matrix.debian_version == 'bullseye'
+#      env:
+#        DEBIAN_FRONTEND: noninteractive
+#      run: >
+#          apt install -y
+#          qtbase5-dev
+#          qtbase5-dev-tools
+#          qttools5-dev
+#          qttools5-dev-tools
+#          libqt5x11extras5-dev
+#    - uses: actions/checkout@v3
+#      with:
+#        fetch-depth: 0
+#    - name: Add safe git directory
+#      shell: bash
+#      run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
+#    - name: Create Build Environment
+#      shell: bash
+#      run: cmake -E make_directory build
+#    - name: Configure CMake
+#      shell: bash
+#      working-directory: build
+#      run: cmake .. -DBUILD_WITH_QT5=ON
+#    - name: make deb
+#      shell: bash
+#      run: dpkg-buildpackage -b -d -uc -us -nc -j2
         
   build_ubuntu:
     name: Build Ubuntu
@@ -86,7 +86,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [ 'bionic', 'focal', 'jammy', 'kinetic' ]
+        # 'bionic', 'focal', 'jammy', 'kinetic'
+        ubuntu_version: [ 'jammy' ]
     container:
       image: ubuntu:${{matrix.ubuntu_version}}
     steps:
