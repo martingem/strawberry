@@ -369,7 +369,7 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
   ui_->tabs->AddTab(playlist_list_, "playlists", IconLoader::Load("view-media-playlist"), tr("Playlists"));
   //ui_->tabs->AddTab(smartplaylists_view_, "smartplaylists", IconLoader::Load("view-media-playlist"), tr("Smart playlists"));
   ui_->tabs->AddTab(file_view_, "files", IconLoader::Load("document-open"), tr("Files"));
-  // ui_->tabs->AddTab(radio_view_, "radios", IconLoader::Load("radio"), tr("Radios"));
+  ui_->tabs->AddTab(radio_view_, "radios", IconLoader::Load("radio"), tr("Radios"));
 #ifndef Q_OS_WIN
   ui_->tabs->AddTab(device_view_, "devices", IconLoader::Load("device"), tr("Devices"));
 #endif
