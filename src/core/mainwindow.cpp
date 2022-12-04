@@ -431,10 +431,10 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
   //radio_view_->view()->setModel(app_->radio_services()->sort_model());
 
   // Setup bg and fg of QMenu to transparent and white
-  //QString menuBarStyle( "QMenuBar:item#menuBar { background-color: transparent }"
-  //  "QMenuBar:item { background-color: transparent }"
-  //  "QMenuBar#menuBar { background-color: transparent }");
-  //ui_->menuBar->setStyleSheet(menuBarStyle);
+  QString menuBarStyle( "QMenuBar:item#menuBar { background-color: #2B2B2B }"
+    "QMenuBar:item { background-color: #2B2B2B }"
+    "QMenuBar#menuBar { background-color: #2B2B2B }");
+  ui_->menuBar->setStyleSheet(menuBarStyle);
   
   // Icons
   qLog(Debug) << "Creating UI";
