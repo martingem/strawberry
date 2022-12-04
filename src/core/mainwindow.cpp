@@ -367,7 +367,7 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
   ui_->tabs->AddTab(collection_view_, "collection", IconLoader::Load("library-music"), tr("Collection"));
   ui_->tabs->AddTab(queue_view_, "queue", IconLoader::Load("footsteps"), tr("Queue"));
   ui_->tabs->AddTab(playlist_list_, "playlists", IconLoader::Load("view-media-playlist"), tr("Playlists"));
-  //ui_->tabs->AddTab(smartplaylists_view_, "smartplaylists", IconLoader::Load("view-media-playlist"), tr("Smart playlists"));
+  ui_->tabs->AddTab(smartplaylists_view_, "smartplaylists", IconLoader::Load("view-media-playlist"), tr("Smart playlists"));
   ui_->tabs->AddTab(file_view_, "files", IconLoader::Load("document-open"), tr("Files"));
   ui_->tabs->AddTab(radio_view_, "radios", IconLoader::Load("radio"), tr("Radios"));
 #ifndef Q_OS_WIN
@@ -430,12 +430,6 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
 
   radio_view_->view()->setModel(app_->radio_services()->sort_model());
 
-  // Setup bg and fg of QMenu to transparent and white
-  //QString menuBarStyle( "QMenuBar:item#menuBar { background-color: #2B2B2B }"
-  //  "QMenuBar:item { background-color: #2B2B2B }"
-  //  "QMenuBar#menuBar { background-color: #2B2B2B }");
-  //ui_->menuBar->setStyleSheet(menuBarStyle);
-  
   // Icons
   qLog(Debug) << "Creating UI";
 
