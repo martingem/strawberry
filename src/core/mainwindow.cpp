@@ -432,10 +432,7 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
 
   // Setup bg and fg of QMenu to transparent and white
   
-  ui_->menu_music->setStyleSheet("background-color: transparent; color: white");
-  ui_->menu_playlist->setStyleSheet("background-color: transparent; color: white");
-  ui_->menu_tools->setStyleSheet("background-color: transparent; color: white");
-  ui_->menu_help->setStyleSheet("background-color: transparent; color: white");
+  ui_->menuBar->setStyleSheet("QMenuBar::item { background-color: transparent; color: white }");
   
   // Icons
   qLog(Debug) << "Creating UI";
