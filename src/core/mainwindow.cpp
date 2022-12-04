@@ -300,7 +300,7 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
 #ifdef HAVE_QOBUZ
       qobuz_view_(new InternetTabsView(app_, app->internet_services()->ServiceBySource(Song::Source_Qobuz), QobuzSettingsPage::kSettingsGroup, SettingsDialog::Page_Qobuz, this)),
 #endif
-      //radio_view_(new RadioViewContainer(this)),
+      radio_view_(new RadioViewContainer(this)),
       lastfm_import_dialog_(new LastFMImportDialog(app_->lastfm_import(), this)),
       collection_show_all_(nullptr),
       collection_show_duplicates_(nullptr),
@@ -428,7 +428,7 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
 
   organize_dialog_->SetDestinationModel(app_->collection()->model()->directory_model());
 
-  //radio_view_->view()->setModel(app_->radio_services()->sort_model());
+  radio_view_->view()->setModel(app_->radio_services()->sort_model());
 
   // Setup bg and fg of QMenu to transparent and white
   //QString menuBarStyle( "QMenuBar:item#menuBar { background-color: #2B2B2B }"
@@ -717,9 +717,9 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
   QObject::connect(qobuz_view_->search_view(), &InternetSearchView::AddToPlaylist, this, &MainWindow::AddToPlaylist);
 #endif
 
-  //QObject::connect(radio_view_, &RadioViewContainer::Refresh, app_->radio_services(), &RadioServices::RefreshChannels);
-  //QObject::connect(radio_view_->view(), &RadioView::GetChannels, app_->radio_services(), &RadioServices::GetChannels);
-  //QObject::connect(radio_view_->view(), &RadioView::AddToPlaylistSignal, this, &MainWindow::AddToPlaylist);
+  QObject::connect(radio_view_, &RadioViewContainer::Refresh, app_->radio_services(), &RadioServices::RefreshChannels);
+  QObject::connect(radio_view_->view(), &RadioView::GetChannels, app_->radio_services(), &RadioServices::GetChannels);
+  QObject::connect(radio_view_->view(), &RadioView::AddToPlaylistSignal, this, &MainWindow::AddToPlaylist);
 
   // Playlist menu
   QObject::connect(playlist_menu_, &QMenu::aboutToHide, this, &MainWindow::PlaylistMenuHidden);
@@ -1177,7 +1177,7 @@ void MainWindow::ReloadAllSettings() {
   queue_view_->ReloadSettings();
   playlist_list_->ReloadSettings();
   smartplaylists_view_->ReloadSettings();
-  //radio_view_->ReloadSettings();
+  radio_view_->ReloadSettings();
   app_->internet_services()->ReloadSettings();
   app_->radio_services()->ReloadSettings();
   app_->cover_providers()->ReloadSettings();
