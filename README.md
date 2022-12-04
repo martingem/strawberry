@@ -1,3 +1,9 @@
+Note from @martingem: This fork's goal is to build a release of Strawberry using QT5 instead of QT6, for my own needs (Pop_OS! 22.04) using Ubuntu:22-04. I'm building this for my needs and will not work on other distributions (Fedora, etc). I'm doing this because I have a need for it, as other distribution of Linux have it but not apt (AUR for example has a build strawberry-qt5). Also, I don't want to install all the pre-requisites on my system so it's easier to let GitHub Actions do it.
+
+Feel free to download the .deb package in the Actions tab. I might work later to create releases (to make the download easier), but no promises.
+
+===================================================================================================================
+
 :strawberry: Strawberry Music Player [![Build Status](https://github.com/strawberrymusicplayer/strawberry/workflows/build/badge.svg)](https://github.com/strawberrymusicplayer/strawberry/actions)
 =======================
 [![Sponsor](https://img.shields.io/badge/-Sponsor-green?logo=github)](https://github.com/sponsors/jonaski)
