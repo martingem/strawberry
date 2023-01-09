@@ -29,7 +29,7 @@
 #include <QString>
 
 #include "core/logging.h"
-#include "utilities.h"
+#include "utilities/fileutils.h"
 #include "musicstorage.h"
 
 #include "filesystemmusicstorage.h"
@@ -106,12 +106,7 @@ bool FilesystemMusicStorage::DeleteFromStorage(const DeleteJob &job) {
 
   if (job.use_trash_) {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
-    if (fileInfo.isDir()) {
-      return Utilities::MoveToTrashRecursive(path);
-    }
-    else {
-      return QFile::moveToTrash(path);
-    }
+    return QFile::moveToTrash(path);
 #else
     return false;
 #endif

@@ -50,8 +50,10 @@
 #include "core/iconloader.h"
 
 #include "engine/enginebase.h"
-#include "timeconstants.h"
-#include "utilities.h"
+#include "utilities/strutils.h"
+#include "utilities/timeutils.h"
+#include "utilities/cryptutils.h"
+#include "utilities/timeconstants.h"
 #include "song.h"
 #include "application.h"
 #include "sqlquery.h"
@@ -146,7 +148,6 @@ const QString Song::kEmbeddedCover = "(embedded)";
 const QRegularExpression Song::kAlbumRemoveDisc(" ?-? ((\\(|\\[)?)(Disc|CD) ?([0-9]{1,2})((\\)|\\])?)$", QRegularExpression::CaseInsensitiveOption);
 const QRegularExpression Song::kAlbumRemoveMisc(" ?-? ((\\(|\\[)?)(Remastered|([0-9]{1,4}) *Remaster|Explicit) ?((\\)|\\])?)$", QRegularExpression::CaseInsensitiveOption);
 const QRegularExpression Song::kTitleRemoveMisc(" ?-? ((\\(|\\[)?)(Remastered|Remastered Version|([0-9]{1,4}) *Remaster) ?((\\)|\\])?)$", QRegularExpression::CaseInsensitiveOption);
-const QString Song::kVariousArtists("various artists");
 
 const QStringList Song::kArticles = QStringList() << "the " << "a " << "an ";
 
@@ -1077,12 +1078,9 @@ void Song::InitFromFilePartial(const QString &filename, const QFileInfo &fileinf
 
 void Song::InitArtManual() {
 
-  QString album = effective_album();
-  album.remove(Song::kAlbumRemoveDisc);
-
   // If we don't have an art, check if we have one in the cache
-  if (d->art_manual_.isEmpty() && d->art_automatic_.isEmpty() && !effective_albumartist().isEmpty() && !album.isEmpty()) {
-    QString filename(Utilities::Sha1CoverHash(effective_albumartist(), album).toHex() + ".jpg");
+  if (d->art_manual_.isEmpty() && d->art_automatic_.isEmpty() && !effective_albumartist().isEmpty() && !effective_album().isEmpty()) {
+    QString filename(Utilities::Sha1CoverHash(effective_albumartist(), effective_album()).toHex() + ".jpg");
     QString path(ImageCacheDir(d->source_) + "/" + filename);
     if (QFile::exists(path)) {
       d->art_manual_ = QUrl::fromLocalFile(path);
@@ -1609,6 +1607,10 @@ void Song::ToXesam(QVariantMap *map) const {
   AddMetadata("xesam:lastUsed", AsMPRISDateTimeType(lastplayed()), map);
   AddMetadataAsList("xesam:composer", composer(), map);
   AddMetadata("xesam:useCount", static_cast<int>(playcount()), map);
+
+  if (rating() != -1.0) {
+    AddMetadata("xesam:userRating", rating(), map);
+  }
 
 }
 

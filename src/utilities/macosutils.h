@@ -1,7 +1,8 @@
 /*
  * Strawberry Music Player
  * This file was part of Clementine.
- * Copyright 2012, Arnaud Bienner <arnaud.bienner@gmail.com>
+ * Copyright 2011, David Sansome <me@davidsansome.com>
+ * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,31 +19,14 @@
  *
  */
 
-#ifndef APPEARANCE_H
-#define APPEARANCE_H
+#ifndef MACOSUTILS_H
+#define MACOSUTILS_H
 
-#include "config.h"
+namespace Utilities {
 
-#include <QObject>
-#include <QColor>
-#include <QPalette>
+qint32 GetMacOsVersion();
+void IncreaseFDLimit();
 
-class Appearance : public QObject {
-  Q_OBJECT
+}  // namespace Utilities
 
- public:
-  explicit Appearance(QObject *parent = nullptr);
-
-  static const QPalette kDefaultPalette;
-
-  void LoadUserTheme();
-  static void ResetToSystemDefaultTheme();
-  void ChangeForegroundColor(const QColor &color);
-  void ChangeBackgroundColor(const QColor &color);
-
- private:
-  QColor foreground_color_;
-  QColor background_color_;
-};
-
-#endif  // APPEARANCE_H
+#endif  // MACOSUTILS_H

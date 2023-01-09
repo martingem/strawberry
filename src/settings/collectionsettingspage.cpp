@@ -44,7 +44,8 @@
 
 #include "core/application.h"
 #include "core/iconloader.h"
-#include "core/utilities.h"
+#include "utilities/strutils.h"
+#include "utilities/timeutils.h"
 #include "collection/collection.h"
 #include "collection/collectionmodel.h"
 #include "collection/collectiondirectorymodel.h"
@@ -72,7 +73,7 @@ CollectionSettingsPage::CollectionSettingsPage(SettingsDialog *dialog, QWidget *
   ui_->list->setItemDelegate(new NativeSeparatorsDelegate(this));
 
   // Icons
-  setWindowIcon(IconLoader::Load("library-music"));
+  setWindowIcon(IconLoader::Load("library-music", true, 0, 32));
   ui_->add->setIcon(IconLoader::Load("document-open-folder"));
 
   ui_->combobox_cache_size->addItems({ "KB", "MB" });

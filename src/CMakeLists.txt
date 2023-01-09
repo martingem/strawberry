@@ -7,7 +7,6 @@ endif()
 set(SOURCES
   core/mainwindow.cpp
   core/application.cpp
-  core/appearance.cpp
   core/player.cpp
   core/commandlineoptions.cpp
   core/database.cpp
@@ -35,13 +34,27 @@ set(SOURCES
   core/taskmanager.cpp
   core/thread.cpp
   core/urlhandler.cpp
-  core/utilities.cpp
-  core/imageutils.cpp
   core/iconloader.cpp
   core/standarditemiconloader.cpp
   core/scopedtransaction.cpp
   core/translations.cpp
   core/systemtrayicon.cpp
+
+  utilities/strutils.cpp
+  utilities/envutils.cpp
+  utilities/colorutils.cpp
+  utilities/cryptutils.cpp
+  utilities/fileutils.cpp
+  utilities/diskutils.cpp
+  utilities/imageutils.cpp
+  utilities/macaddrutils.cpp
+  utilities/mimeutils.cpp
+  utilities/randutils.cpp
+  utilities/threadutils.cpp
+  utilities/timeutils.cpp
+  utilities/transliterate.cpp
+  utilities/xmlutils.cpp
+  utilities/filemanagerutils.cpp
 
   engine/enginetype.cpp
   engine/enginebase.cpp
@@ -69,9 +82,11 @@ set(SOURCES
   collection/collectionitemdelegate.cpp
   collection/collectionviewcontainer.cpp
   collection/collectiondirectorymodel.cpp
+  collection/collectionfilteroptions.cpp
   collection/collectionfilterwidget.cpp
   collection/collectionplaylistitem.cpp
   collection/collectionquery.cpp
+  collection/collectionqueryoptions.cpp
   collection/savedgroupingmanager.cpp
   collection/groupbydialog.cpp
   collection/collectiontask.cpp
@@ -205,6 +220,8 @@ set(SOURCES
   widgets/multiloadingindicator.cpp
   widgets/playingwidget.cpp
   widgets/renametablineedit.cpp
+  widgets/sliderslider.cpp
+  widgets/prettyslider.cpp
   widgets/volumeslider.cpp
   widgets/stickyslider.cpp
   widgets/stretchheaderview.cpp
@@ -264,7 +281,6 @@ set(SOURCES
 set(HEADERS
   core/mainwindow.h
   core/application.h
-  core/appearance.h
   core/player.h
   core/database.h
   core/deletefiles.h
@@ -436,6 +452,8 @@ set(HEADERS
   widgets/multiloadingindicator.h
   widgets/playingwidget.h
   widgets/renametablineedit.h
+  widgets/sliderslider.h
+  widgets/prettyslider.h
   widgets/volumeslider.h
   widgets/stickyslider.h
   widgets/stretchheaderview.h
@@ -782,8 +800,8 @@ optional_source(HAVE_AUDIOCD
 # Platform specific - macOS
 optional_source(APPLE
   SOURCES
+    utilities/macosutils.mm
     core/scoped_nsautorelease_pool.mm
-    core/mac_utilities.mm
     core/mac_startup.mm
     core/macsystemtrayicon.mm
     core/macfslistener.mm
@@ -804,8 +822,10 @@ optional_source(APPLE
 # Platform specific - Windows
 optional_source(WIN32
   SOURCES
+    utilities/winutils.cpp
     engine/directsounddevicefinder.cpp
     engine/mmdevicefinder.cpp
+    core/scopedwchararray.cpp
     core/windows7thumbbar.cpp
   HEADERS
     core/windows7thumbbar.h

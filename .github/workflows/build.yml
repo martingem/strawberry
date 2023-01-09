@@ -140,17 +140,13 @@ jobs:
         with:
           fetch-depth: 0
       - name: Add safe git directory
-        shell: bash
         run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
       - name: Create Build Environment
-        shell: bash
         run: cmake -E make_directory build
       - name: Configure CMake
-        shell: bash
         working-directory: build
         run: cmake .. -DBUILD_WITH_QT5=ON
       - name: make deb
-        shell: bash
         run: dpkg-buildpackage -b -d -uc -us -nc -j2
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v3.1.1

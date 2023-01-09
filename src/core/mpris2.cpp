@@ -46,10 +46,10 @@
 #include "mpris_common.h"
 #include "mpris2.h"
 
-#include "timeconstants.h"
 #include "song.h"
 #include "application.h"
 #include "player.h"
+#include "utilities/timeconstants.h"
 #include "engine/enginebase.h"
 #include "playlist/playlist.h"
 #include "playlist/playlistitem.h"
@@ -190,15 +190,15 @@ void Mpris2::RepeatModeChanged() {
 
 }
 
-void Mpris2::EmitNotification(const QString &name, const QVariant &val) {
-  EmitNotification(name, val, "org.mpris.MediaPlayer2.Player");
+void Mpris2::EmitNotification(const QString &name, const QVariant &value) {
+  EmitNotification(name, value, "org.mpris.MediaPlayer2.Player");
 }
 
-void Mpris2::EmitNotification(const QString &name, const QVariant &val, const QString &mprisEntity) {
+void Mpris2::EmitNotification(const QString &name, const QVariant &value, const QString &mprisEntity) {
 
   QDBusMessage msg = QDBusMessage::createSignal(kMprisObjectPath, kFreedesktopPath, "PropertiesChanged");
   QVariantMap map;
-  map.insert(name, val);
+  map.insert(name, value);
   QVariantList args = QVariantList() << mprisEntity << map << QStringList();
   msg.setArguments(args);
   QDBusConnection::sessionBus().send(msg);
@@ -401,6 +401,13 @@ void Mpris2::AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResult &re
   else if (result.temp_cover_url.isValid() && result.temp_cover_url.isLocalFile()) {
     cover_url = result.temp_cover_url;
   }
+  else if (song.art_manual().isValid() && song.art_manual().isLocalFile() && song.art_manual().path() != Song::kManuallyUnsetCover && song.art_manual().path() != Song::kEmbeddedCover) {
+    cover_url = song.art_manual();
+  }
+  else if (song.art_automatic().isValid() && song.art_automatic().isLocalFile() && song.art_automatic().path() != Song::kManuallyUnsetCover && song.art_automatic().path() != Song::kEmbeddedCover) {
+    cover_url = song.art_automatic();
+  }
+
   if (cover_url.isValid()) AddMetadata("mpris:artUrl", cover_url.toString(), &last_metadata_);
 
   AddMetadata("year", song.year(), &last_metadata_);

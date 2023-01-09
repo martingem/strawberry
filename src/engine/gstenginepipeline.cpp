@@ -48,7 +48,7 @@
 
 #include "core/logging.h"
 #include "core/signalchecker.h"
-#include "core/timeconstants.h"
+#include "utilities/timeconstants.h"
 #include "settings/backendsettingspage.h"
 #include "enginebase.h"
 #include "gstengine.h"
@@ -98,16 +98,25 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       pending_seek_nanosec_(-1),
       last_known_position_ns_(0),
       next_uri_set_(false),
+      volume_internal_(-1.0),
       volume_percent_(100),
       use_fudge_timer_(false),
       pipeline_(nullptr),
       audiobin_(nullptr),
+      audiosink_(nullptr),
       audioqueue_(nullptr),
+      audioqueueconverter_(nullptr),
       volume_(nullptr),
+      volume_sw_(nullptr),
       volume_fading_(nullptr),
       audiopanorama_(nullptr),
       equalizer_(nullptr),
       equalizer_preamp_(nullptr),
+      eventprobe_(nullptr),
+      upstream_events_probe_cb_id_(0),
+      buffer_probe_cb_id_(0),
+      playbin_probe_cb_id_(0),
+      element_added_cb_id_(-1),
       pad_added_cb_id_(-1),
       notify_source_cb_id_(-1),
       about_to_finish_cb_id_(-1),
@@ -130,6 +139,10 @@ GstEnginePipeline::~GstEnginePipeline() {
       fader_.reset();
     }
 
+    if (element_added_cb_id_ != -1) {
+      g_signal_handler_disconnect(G_OBJECT(audiobin_), element_added_cb_id_);
+    }
+
     if (pad_added_cb_id_ != -1) {
       g_signal_handler_disconnect(G_OBJECT(pipeline_), pad_added_cb_id_);
     }
@@ -146,11 +159,29 @@ GstEnginePipeline::~GstEnginePipeline() {
       g_signal_handler_disconnect(G_OBJECT(volume_), notify_volume_cb_id_);
     }
 
-    GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_));
-    if (bus) {
-      gst_bus_remove_watch(bus);
-      gst_bus_set_sync_handler(bus, nullptr, nullptr, nullptr);
-      gst_object_unref(bus);
+    if (upstream_events_probe_cb_id_ != 0) {
+      GstPad *pad = gst_element_get_static_pad(eventprobe_, "src");
+      if (pad) {
+        gst_pad_remove_probe(pad, upstream_events_probe_cb_id_);
+        gst_object_unref(pad);
+      }
+    }
+
+    if (buffer_probe_cb_id_ != 0) {
+      GstPad *pad = gst_element_get_static_pad(audioqueueconverter_, "src");
+      if (pad) {
+        gst_pad_remove_probe(pad, buffer_probe_cb_id_);
+        gst_object_unref(pad);
+      }
+    }
+
+    {
+      GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_));
+      if (bus) {
+        gst_bus_remove_watch(bus);
+        gst_bus_set_sync_handler(bus, nullptr, nullptr, nullptr);
+        gst_object_unref(bus);
+      }
     }
 
     gst_element_set_state(pipeline_, GST_STATE_NULL);
@@ -254,14 +285,20 @@ bool GstEnginePipeline::InitFromUrl(const QByteArray &stream_url, const QUrl &or
   pipeline_ = CreateElement("playbin", "pipeline", nullptr, error);
   if (!pipeline_) return false;
 
-  pad_added_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "pad-added", &NewPadCallback, this);
-  notify_source_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "notify::source", &SourceSetupCallback, this);
+  pad_added_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "pad-added", &PadAddedCallback, this);
+  notify_source_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "notify::source", &NotifySourceCallback, this);
   about_to_finish_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "about-to-finish", &AboutToFinishCallback, this);
 
   if (!InitAudioBin(error)) return false;
 
-  if (volume_) {
-    notify_volume_cb_id_ = CHECKED_GCONNECT(G_OBJECT(volume_), "notify::volume", &VolumeCallback, this);
+  if (volume_enabled_ && !volume_) {
+    if (output_ == GstEngine::kAutoSink) {
+      element_added_cb_id_ = CHECKED_GCONNECT(G_OBJECT(audiobin_), "deep-element-added", &ElementAddedCallback, this);
+    }
+    else {
+      qLog(Debug) << output_ << "does not have volume, using own volume.";
+      SetupVolume(volume_sw_);
+    }
   }
 
   // Set playbin's sink to be our custom audio-sink.
@@ -291,14 +328,14 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
   if (!audiobin_) return false;
 
   // Create the sink
-  GstElement *audiosink = CreateElement(output_, output_, audiobin_, error);
-  if (!audiosink) {
+  audiosink_ = CreateElement(output_, output_, audiobin_, error);
+  if (!audiosink_) {
     gst_object_unref(GST_OBJECT(audiobin_));
     return false;
   }
 
   if (device_.isValid()) {
-    if (g_object_class_find_property(G_OBJECT_GET_CLASS(audiosink), "device")) {
+    if (g_object_class_find_property(G_OBJECT_GET_CLASS(audiosink_), "device")) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
       switch (device_.metaType().id()) {
 #else
@@ -312,7 +349,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
           QString device = device_.toString();
           if (!device.isEmpty()) {
             qLog(Debug) << "Setting device" << device << "for" << output_;
-            g_object_set(G_OBJECT(audiosink), "device", device.toUtf8().constData(), nullptr);
+            g_object_set(G_OBJECT(audiosink_), "device", device.toUtf8().constData(), nullptr);
           }
           break;
         }
@@ -324,7 +361,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
           QByteArray device = device_.toByteArray();
           if (!device.isEmpty()) {
             qLog(Debug) << "Setting device" << device_ << "for" << output_;
-            g_object_set(G_OBJECT(audiosink), "device", device.constData(), nullptr);
+            g_object_set(G_OBJECT(audiosink_), "device", device.constData(), nullptr);
           }
           break;
         }
@@ -335,7 +372,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
 #endif
           qint64 device = device_.toLongLong();
           qLog(Debug) << "Setting device" << device << "for" << output_;
-          g_object_set(G_OBJECT(audiosink), "device", device, nullptr);
+          g_object_set(G_OBJECT(audiosink_), "device", device, nullptr);
           break;
         }
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -345,7 +382,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
 #endif
           int device = device_.toInt();
           qLog(Debug) << "Setting device" << device << "for" << output_;
-          g_object_set(G_OBJECT(audiosink), "device", device, nullptr);
+          g_object_set(G_OBJECT(audiosink_), "device", device, nullptr);
           break;
         }
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -355,7 +392,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
 #endif
           QUuid device = device_.toUuid();
           qLog(Debug) << "Setting device" << device << "for" << output_;
-          g_object_set(G_OBJECT(audiosink), "device", device, nullptr);
+          g_object_set(G_OBJECT(audiosink_), "device", device, nullptr);
           break;
         }
         default:
@@ -364,7 +401,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
       }
     }
 
-    else if (g_object_class_find_property(G_OBJECT_GET_CLASS(audiosink), "port-pattern")) {
+    else if (g_object_class_find_property(G_OBJECT_GET_CLASS(audiosink_), "port-pattern")) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
       switch (device_.metaType().id()) {
 #else
@@ -378,7 +415,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
           QString port_pattern = device_.toString();
           if (!port_pattern.isEmpty()) {
             qLog(Debug) << "Setting port pattern" << port_pattern << "for" << output_;
-            g_object_set(G_OBJECT(audiosink), "port-pattern", port_pattern.toUtf8().constData(), nullptr);
+            g_object_set(G_OBJECT(audiosink_), "port-pattern", port_pattern.toUtf8().constData(), nullptr);
           }
           break;
         }
@@ -391,7 +428,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
           QByteArray port_pattern = device_.toByteArray();
           if (!port_pattern.isEmpty()) {
             qLog(Debug) << "Setting port pattern" << port_pattern << "for" << output_;
-            g_object_set(G_OBJECT(audiosink), "port-pattern", port_pattern.constData(), nullptr);
+            g_object_set(G_OBJECT(audiosink_), "port-pattern", port_pattern.constData(), nullptr);
           }
           break;
         }
@@ -404,9 +441,9 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
 
   }
 
-  if (g_object_class_find_property(G_OBJECT_GET_CLASS(audiosink), "volume")) {
-    qLog(Debug) << output_ << "has volume element, enabling system volume synchronization.";
-    volume_ = audiosink;
+  if (g_object_class_find_property(G_OBJECT_GET_CLASS(audiosink_), "volume")) {
+    qLog(Debug) << output_ << "has volume, enabling volume synchronization.";
+    SetupVolume(audiosink_);
   }
 
   // Create all the other elements
@@ -418,23 +455,28 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
     return false;
   }
 
-  GstElement *audioconverter = CreateElement("audioconvert", "audioconverter", audiobin_, error);
-  if (!audioconverter) {
+  audioqueueconverter_ = CreateElement("audioconvert", "audioqueueconverter", audiobin_, error);
+  if (!audioqueueconverter_) {
     gst_object_unref(GST_OBJECT(audiobin_));
     audiobin_ = nullptr;
     return false;
   }
 
-  // Create the volume elements if it's enabled.
-  GstElement *swvolume = nullptr;
+  GstElement *audiosinkconverter = CreateElement("audioconvert", "audiosinkconverter", audiobin_, error);
+  if (!audiosinkconverter) {
+    gst_object_unref(GST_OBJECT(audiobin_));
+    audiobin_ = nullptr;
+    return false;
+  }
+
+  // Create the volume element if it's enabled.
   if (volume_enabled_ && !volume_) {
-    swvolume = CreateElement("volume", "volume_sw", audiobin_, error);
-    if (!swvolume) {
+    volume_sw_ = CreateElement("volume", "volume_sw", audiobin_, error);
+    if (!volume_sw_) {
       gst_object_unref(GST_OBJECT(audiobin_));
       audiobin_ = nullptr;
       return false;
     }
-    volume_ = swvolume;
   }
 
   if (fading_enabled_) {
@@ -512,7 +554,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
   }
 
   // Create the replaygain elements if it's enabled.
-  GstElement *eventprobe = audioqueue_;
+  eventprobe_ = audioqueueconverter_;
   GstElement *rgvolume = nullptr;
   GstElement *rglimiter = nullptr;
   GstElement *rgconverter = nullptr;
@@ -535,7 +577,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
       audiobin_ = nullptr;
       return false;
     }
-    eventprobe = rgconverter;
+    eventprobe_ = rgconverter;
     // Set replaygain settings
     g_object_set(G_OBJECT(rgvolume), "album-mode", rg_mode_, nullptr);
     g_object_set(G_OBJECT(rgvolume), "pre-amp", rg_preamp_, nullptr);
@@ -564,9 +606,9 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
   // Add a data probe on the src pad of the audioconvert element for our scope.
   // We do it here because we want pre-equalized and pre-volume samples so that our visualization are not be affected by them.
   {
-    GstPad *pad = gst_element_get_static_pad(eventprobe, "src");
+    GstPad *pad = gst_element_get_static_pad(eventprobe_, "src");
     if (pad) {
-      gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, &EventHandoffCallback, this, nullptr);
+      upstream_events_probe_cb_id_ = gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, &UpstreamEventsProbeCallback, this, nullptr);
       gst_object_unref(pad);
     }
   }
@@ -587,14 +629,14 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
 
   // Link all elements
 
-  if (!gst_element_link(audioqueue_, audioconverter)) {
+  if (!gst_element_link(audioqueue_, audioqueueconverter_)) {
     gst_object_unref(GST_OBJECT(audiobin_));
     audiobin_ = nullptr;
     error = "gst_element_link() failed.";
     return false;
   }
 
-  GstElement *element_link = audioconverter;  // The next element to link from.
+  GstElement *element_link = audioqueueconverter_;  // The next element to link from.
 
   // Link replaygain elements if enabled.
   if (rg_enabled_ && rgvolume && rglimiter && rgconverter) {
@@ -630,14 +672,14 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
   }
 
   // Link software volume element if enabled.
-  if (volume_enabled_ && swvolume) {
-    if (!gst_element_link(element_link, swvolume)) {
+  if (volume_enabled_ && volume_sw_) {
+    if (!gst_element_link(element_link, volume_sw_)) {
       gst_object_unref(GST_OBJECT(audiobin_));
       audiobin_ = nullptr;
       error = "gst_element_link() failed.";
       return false;
     }
-    element_link = swvolume;
+    element_link = volume_sw_;
   }
 
   // Link fading volume element if enabled.
@@ -663,6 +705,13 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
     element_link = bs2b;
   }
 
+  if (!gst_element_link(element_link, audiosinkconverter)) {
+    gst_object_unref(GST_OBJECT(audiobin_));
+    audiobin_ = nullptr;
+    error = "gst_element_link() failed.";
+    return false;
+  }
+
   {
     GstCaps *caps = gst_caps_new_empty_simple("audio/x-raw");
     if (!caps) {
@@ -675,14 +724,20 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
       qLog(Debug) << "Setting channels to" << channels_;
       gst_caps_set_simple(caps, "channels", G_TYPE_INT, channels_, nullptr);
     }
-    gst_element_link_filtered(element_link, audiosink, caps);
+    if (!gst_element_link_filtered(audiosinkconverter, audiosink_, caps)) {
+      gst_caps_unref(caps);
+      gst_object_unref(GST_OBJECT(audiobin_));
+      audiobin_ = nullptr;
+      error = "gst_element_link_filtered() failed.";
+      return false;
+    }
     gst_caps_unref(caps);
   }
 
   {  // Add probes and handlers.
-    GstPad *pad = gst_element_get_static_pad(audioconverter, "src");
+    GstPad *pad = gst_element_get_static_pad(audioqueueconverter_, "src");
     if (pad) {
-      gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, HandoffCallback, this, nullptr);
+      buffer_probe_cb_id_ = gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, BufferProbeCallback, this, nullptr);
       gst_object_unref(pad);
     }
   }
@@ -690,8 +745,8 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
   {
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_));
     if (bus) {
-      gst_bus_set_sync_handler(bus, BusCallbackSync, this, nullptr);
-      gst_bus_add_watch(bus, BusCallback, this);
+      gst_bus_set_sync_handler(bus, BusSyncCallback, this, nullptr);
+      gst_bus_add_watch(bus, BusWatchCallback, this);
       gst_object_unref(bus);
     }
   }
@@ -702,7 +757,18 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
 
 }
 
-GstPadProbeReturn GstEnginePipeline::EventHandoffCallback(GstPad*, GstPadProbeInfo *info, gpointer self) {
+void GstEnginePipeline::SetupVolume(GstElement *element) {
+
+  if (volume_) return;
+
+  volume_ = element;
+  notify_volume_cb_id_ = CHECKED_GCONNECT(G_OBJECT(element), "notify::volume", &NotifyVolumeCallback, this);
+
+}
+
+GstPadProbeReturn GstEnginePipeline::UpstreamEventsProbeCallback(GstPad *pad, GstPadProbeInfo *info, gpointer self) {
+
+  Q_UNUSED(pad)
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
@@ -729,7 +795,33 @@ GstPadProbeReturn GstEnginePipeline::EventHandoffCallback(GstPad*, GstPadProbeIn
 
 }
 
-void GstEnginePipeline::SourceSetupCallback(GstPlayBin *bin, GParamSpec*, gpointer self) {
+void GstEnginePipeline::ElementAddedCallback(GstBin *bin, GstBin*, GstElement *element, gpointer self) {
+
+  GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
+
+  if (bin != GST_BIN(instance->audiobin_) || GST_ELEMENT(gst_element_get_parent(element)) != instance->audiosink_ || instance->volume_) return;
+
+  g_signal_handler_disconnect(G_OBJECT(instance->audiobin_), instance->element_added_cb_id_);
+  instance->element_added_cb_id_ = -1;
+
+  GstElement *volume = nullptr;
+  if (GST_IS_STREAM_VOLUME(element)) {
+    qLog(Debug) << instance->output_ << "has volume, enabling volume synchronization.";
+    volume = element;
+  }
+  else {
+    qLog(Debug) << instance->output_ << "does not have volume, using own volume.";
+    volume = instance->volume_sw_;
+  }
+
+  instance->SetupVolume(volume);
+  instance->SetVolume(instance->volume_percent_);
+
+}
+
+void GstEnginePipeline::NotifySourceCallback(GstPlayBin *bin, GParamSpec *param_spec, gpointer self) {
+
+  Q_UNUSED(param_spec)
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
@@ -775,14 +867,16 @@ void GstEnginePipeline::SourceSetupCallback(GstPlayBin *bin, GParamSpec*, gpoint
 
 }
 
-void GstEnginePipeline::VolumeCallback(GstElement*, GParamSpec*, gpointer self) {
+void GstEnginePipeline::NotifyVolumeCallback(GstElement *element, GParamSpec *param_spec, gpointer self) {
+
+  Q_UNUSED(element)
+  Q_UNUSED(param_spec)
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
-  gdouble volume = 0;
-  g_object_get(G_OBJECT(instance->volume_), "volume", &volume, nullptr);
+  g_object_get(G_OBJECT(instance->volume_), "volume", &instance->volume_internal_, nullptr);
 
-  const uint volume_percent = static_cast<uint>(qBound(0L, lround(qBound(0.0, gst_stream_volume_convert_volume(GST_STREAM_VOLUME_FORMAT_LINEAR, GST_STREAM_VOLUME_FORMAT_CUBIC, volume), 1.0) / 0.01), 100L));
+  const uint volume_percent = static_cast<uint>(qBound(0L, lround(instance->volume_internal_ / 0.01), 100L));
   if (volume_percent != instance->volume_percent_) {
     instance->volume_percent_ = volume_percent;
     emit instance->VolumeChanged(volume_percent);
@@ -790,7 +884,9 @@ void GstEnginePipeline::VolumeCallback(GstElement*, GParamSpec*, gpointer self) 
 
 }
 
-void GstEnginePipeline::NewPadCallback(GstElement*, GstPad *pad, gpointer self) {
+void GstEnginePipeline::PadAddedCallback(GstElement *element, GstPad *pad, gpointer self) {
+
+  Q_UNUSED(element)
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
@@ -811,7 +907,7 @@ void GstEnginePipeline::NewPadCallback(GstElement*, GstPad *pad, gpointer self) 
   gst_pad_set_offset(pad, static_cast<gint64>(running_time));
 
   // Add a probe to the pad so we can update last_playbin_segment_.
-  gst_pad_add_probe(pad, static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM | GST_PAD_PROBE_TYPE_EVENT_FLUSH), PlaybinProbe, instance, nullptr);
+  instance->playbin_probe_cb_id_ = gst_pad_add_probe(pad, static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM | GST_PAD_PROBE_TYPE_EVENT_FLUSH), PlaybinProbeCallback, instance, nullptr);
 
   instance->pipeline_is_connected_ = true;
   if (instance->pending_seek_nanosec_ != -1 && instance->pipeline_is_initialized_) {
@@ -820,9 +916,9 @@ void GstEnginePipeline::NewPadCallback(GstElement*, GstPad *pad, gpointer self) 
 
 }
 
-GstPadProbeReturn GstEnginePipeline::PlaybinProbe(GstPad *pad, GstPadProbeInfo *info, gpointer data) {
+GstPadProbeReturn GstEnginePipeline::PlaybinProbeCallback(GstPad *pad, GstPadProbeInfo *info, gpointer self) {
 
-  GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(data);
+  GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
   const GstPadProbeType info_type = GST_PAD_PROBE_INFO_TYPE(info);
 
@@ -860,7 +956,7 @@ GstPadProbeReturn GstEnginePipeline::PlaybinProbe(GstPad *pad, GstPadProbeInfo *
 
 }
 
-GstPadProbeReturn GstEnginePipeline::HandoffCallback(GstPad *pad, GstPadProbeInfo *info, gpointer self) {
+GstPadProbeReturn GstEnginePipeline::BufferProbeCallback(GstPad *pad, GstPadProbeInfo *info, gpointer self) {
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
@@ -1023,7 +1119,9 @@ GstPadProbeReturn GstEnginePipeline::HandoffCallback(GstPad *pad, GstPadProbeInf
 
 }
 
-void GstEnginePipeline::AboutToFinishCallback(GstPlayBin*, gpointer self) {
+void GstEnginePipeline::AboutToFinishCallback(GstPlayBin *playbin, gpointer self) {
+
+  Q_UNUSED(playbin)
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
@@ -1036,32 +1134,9 @@ void GstEnginePipeline::AboutToFinishCallback(GstPlayBin*, gpointer self) {
 
 }
 
-gboolean GstEnginePipeline::BusCallback(GstBus*, GstMessage *msg, gpointer self) {
+GstBusSyncReply GstEnginePipeline::BusSyncCallback(GstBus *bus, GstMessage *msg, gpointer self) {
 
-  GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
-
-  switch (GST_MESSAGE_TYPE(msg)) {
-    case GST_MESSAGE_ERROR:
-      instance->ErrorMessageReceived(msg);
-      break;
-
-    case GST_MESSAGE_TAG:
-      instance->TagMessageReceived(msg);
-      break;
-
-    case GST_MESSAGE_STATE_CHANGED:
-      instance->StateChangedMessageReceived(msg);
-      break;
-
-    default:
-      break;
-  }
-
-  return TRUE;
-
-}
-
-GstBusSyncReply GstEnginePipeline::BusCallbackSync(GstBus*, GstMessage *msg, gpointer self) {
+  Q_UNUSED(bus)
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
@@ -1106,6 +1181,33 @@ GstBusSyncReply GstEnginePipeline::BusCallbackSync(GstBus*, GstMessage *msg, gpo
 
 }
 
+gboolean GstEnginePipeline::BusWatchCallback(GstBus *bus, GstMessage *msg, gpointer self) {
+
+  Q_UNUSED(bus)
+
+  GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
+
+  switch (GST_MESSAGE_TYPE(msg)) {
+    case GST_MESSAGE_ERROR:
+      instance->ErrorMessageReceived(msg);
+      break;
+
+    case GST_MESSAGE_TAG:
+      instance->TagMessageReceived(msg);
+      break;
+
+    case GST_MESSAGE_STATE_CHANGED:
+      instance->StateChangedMessageReceived(msg);
+      break;
+
+    default:
+      break;
+  }
+
+  return TRUE;
+
+}
+
 void GstEnginePipeline::StreamStatusMessageReceived(GstMessage *msg) {
 
   GstStreamStatusType type = GST_STREAM_STATUS_TYPE_CREATE;
@@ -1140,7 +1242,11 @@ void GstEnginePipeline::StreamStartMessageReceived() {
 
 }
 
-void GstEnginePipeline::TaskEnterCallback(GstTask*, GThread*, gpointer) {
+void GstEnginePipeline::TaskEnterCallback(GstTask *task, GThread *thread, gpointer self) {
+
+  Q_UNUSED(task)
+  Q_UNUSED(thread)
+  Q_UNUSED(self)
 
   // Bump the priority of the thread only on macOS
 
@@ -1180,10 +1286,10 @@ void GstEnginePipeline::ErrorMessageReceived(GstMessage *msg) {
   g_error_free(error);
   g_free(debugs);
 
-  if (pipeline_is_initialized_ && next_uri_set_ && (domain == GST_RESOURCE_ERROR || domain == GST_STREAM_ERROR)) {
+  if (pipeline_is_initialized_ && next_uri_set_ && (domain == GST_CORE_ERROR || domain == GST_RESOURCE_ERROR || domain == GST_STREAM_ERROR)) {
     // A track is still playing and the next uri is not playable. We ignore the error here so it can play until the end.
     // But there is no message send to the bus when the current track finishes, we have to add an EOS ourself.
-    qLog(Info) << "Ignoring error when loading next track";
+    qLog(Info) << "Ignoring error" << domain << code << message << debugstr << "when loading next track";
     GstPad *pad = gst_element_get_static_pad(audiobin_, "sink");
     gst_pad_send_event(pad, gst_event_new_eos());
     gst_object_unref(pad);
@@ -1409,9 +1515,12 @@ bool GstEnginePipeline::Seek(const qint64 nanosec) {
 
 void GstEnginePipeline::SetVolume(const uint volume_percent) {
 
-  if (volume_) {
-    const double volume = gst_stream_volume_convert_volume(GST_STREAM_VOLUME_FORMAT_CUBIC, GST_STREAM_VOLUME_FORMAT_LINEAR, static_cast<double>(volume_percent) * 0.01);
-    g_object_set(G_OBJECT(volume_), "volume", volume, nullptr);
+  if (volume_ && volume_percent_ != volume_percent) {
+    const double volume_internal = static_cast<double>(volume_percent) * 0.01;
+    if (volume_internal != volume_internal_) {
+      volume_internal_ = volume_internal;
+      g_object_set(G_OBJECT(volume_), "volume", volume_internal, nullptr);
+    }
   }
 
   volume_percent_ = volume_percent;

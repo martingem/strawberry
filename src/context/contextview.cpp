@@ -51,8 +51,9 @@
 #include "core/application.h"
 #include "core/player.h"
 #include "core/song.h"
-#include "core/utilities.h"
 #include "core/iconloader.h"
+#include "utilities/strutils.h"
+#include "utilities/timeutils.h"
 #include "widgets/resizabletextedit.h"
 #include "engine/engine_fwd.h"
 #include "engine/enginebase.h"
@@ -545,7 +546,7 @@ void ContextView::SetSong() {
     widget_play_output_->show();
     Engine::EngineType enginetype(Engine::None);
     if (app_->player()->engine()) enginetype = app_->player()->engine()->type();
-    QIcon icon_engine = IconLoader::Load(EngineName(enginetype), 32);
+    QIcon icon_engine = IconLoader::Load(EngineName(enginetype), true, 32);
 
     label_engine_icon_->setPixmap(icon_engine.pixmap(QSize(32, 32)));
     label_engine_->setText(EngineDescription(enginetype));
@@ -563,7 +564,7 @@ void ContextView::SetSong() {
       label_device_title_->show();
       label_device_icon_->show();
       label_device_->show();
-      QIcon icon_device = IconLoader::Load(device.iconname, 32);
+      QIcon icon_device = IconLoader::Load(device.iconname, true, 32);
       label_device_icon_->setPixmap(icon_device.pixmap(QSize(32, 32)));
       label_device_->setText(device.description);
     }

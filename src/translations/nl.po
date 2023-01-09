@@ -112,22 +112,22 @@ msgstr "nummers"
 msgid "%1 Scrobbler Authentication"
 msgstr "%1 Scrobbler authenticatie"
 
-#: context/contextview.cpp:449
+#: context/contextview.cpp:450
 #, qt-format
 msgid "%1 album"
 msgstr "%1 album"
 
-#: context/contextview.cpp:450
+#: context/contextview.cpp:451
 #, qt-format
 msgid "%1 albums"
 msgstr "%1 albums"
 
-#: context/contextview.cpp:445
+#: context/contextview.cpp:446
 #, qt-format
 msgid "%1 artist"
 msgstr "%1 artiest"
 
-#: context/contextview.cpp:446
+#: context/contextview.cpp:447
 #, qt-format
 msgid "%1 artists"
 msgstr "%1 artiesten"
@@ -138,12 +138,12 @@ msgstr "%1 artiesten"
 msgid "%1 dB"
 msgstr "%1 dB"
 
-#: core/utilities.cpp:145
+#: utilities/timeutils.cpp:67
 #, qt-format
 msgid "%1 days"
 msgstr "%1 dagen"
 
-#: core/utilities.cpp:165
+#: utilities/timeutils.cpp:87
 #, qt-format
 msgid "%1 days ago"
 msgstr "%1 dagen geleden"
@@ -168,7 +168,7 @@ msgstr "%1 afspeellijsten (%2)"
 msgid "%1 selected of"
 msgstr "%1 geselecteerd van"
 
-#: context/contextview.cpp:441
+#: context/contextview.cpp:442
 #, qt-format
 msgid "%1 song"
 msgstr "%1 nummer"
@@ -178,7 +178,7 @@ msgstr "%1 nummer"
 msgid "%1 song%2"
 msgstr "%1 nummer%2"
 
-#: context/contextview.cpp:442
+#: context/contextview.cpp:443
 #, qt-format
 msgid "%1 songs"
 msgstr "%1 nummers"
@@ -193,7 +193,7 @@ msgstr "%1 nummer gevonden"
 msgid "%1 songs found (showing %2)"
 msgstr "%1 nummer gevonden (%2 weergegeven)"
 
-#: core/utilities.cpp:455
+#: utilities/filemanagerutils.cpp:141
 #, qt-format
 msgid ""
 "%1 songs in %2 different directories selected, are you sure you want to open "
@@ -202,7 +202,7 @@ msgstr ""
 "%1 nummers in %2 verschillende mappen geselecteerd, weet u zeker dat u ze "
 "allemaal wilt openen?"
 
-#: dialogs/edittagdialog.cpp:653
+#: dialogs/edittagdialog.cpp:690
 #, qt-format
 msgid "%1 songs selected."
 msgstr "%1 nummers geselecteerd."
@@ -212,7 +212,7 @@ msgstr "%1 nummers geselecteerd."
 msgid "%1 tracks"
 msgstr "%1 nummers"
 
-#: covermanager/albumcovermanager.cpp:574
+#: covermanager/albumcovermanager.cpp:576
 #, qt-format
 msgid "%1 transferred"
 msgstr "%1 overgezet"
@@ -352,7 +352,7 @@ msgstr "&Nieuwe afspeellijst"
 msgid "&Next track"
 msgstr "&Volgend nummer"
 
-#: ../build/src/ui_appearancesettingspage.h:601
+#: ../build/src/ui_appearancesettingspage.h:527
 msgid "&No background image"
 msgstr "&Geen achtergrondafbeelding"
 
@@ -416,13 +416,9 @@ msgstr "&Muziek transcoderen"
 msgid "&Update changed collection folders"
 msgstr "&Aangepaste mappen in collectie bijwerken"
 
-#: ../build/src/ui_appearancesettingspage.h:594
+#: ../build/src/ui_appearancesettingspage.h:520
 msgid "&Use the system default color"
 msgstr "&Gebruik het standaard systeemkleur"
-
-#: ../build/src/ui_appearancesettingspage.h:587
-msgid "&Use the system default color set"
-msgstr "&Gebruik de standaard systeemkleurrenset"
 
 #: ../build/src/ui_networkproxysettingspage.h:171
 msgid "&Use the system proxy settings"
@@ -438,7 +434,7 @@ msgstr ""
 "scrobbles aan de server aangeboden worden. De tijd op 0 instellen zal "
 "scrobbles ogenblikkelijk aanbieden)."
 
-#: dialogs/edittagdialog.cpp:98
+#: dialogs/edittagdialog.cpp:100
 msgid "(different across multiple songs)"
 msgstr "(niet bij alle nummers hetzelfde)"
 
@@ -451,11 +447,11 @@ msgstr "0"
 msgid "0:00:00"
 msgstr "0:00:00"
 
-#: ../build/src/ui_appearancesettingspage.h:621
+#: ../build/src/ui_appearancesettingspage.h:547
 msgid "0px"
 msgstr "0px"
 
-#: core/utilities.cpp:145
+#: utilities/timeutils.cpp:67
 msgid "1 day"
 msgstr "1 dag"
 
@@ -463,7 +459,7 @@ msgstr "1 dag"
 msgid "1 track"
 msgstr "1 nummer"
 
-#: ../build/src/ui_appearancesettingspage.h:623
+#: ../build/src/ui_appearancesettingspage.h:549
 msgid "40%"
 msgstr "40%"
 
@@ -483,7 +479,7 @@ msgstr ""
 "<p>Als u tekstgedeelten die tokens bevatten tussen accolades zet, zal dat "
 "gedeelte verborgen worden als het token leeg is.</p>"
 
-#: ../build/src/ui_appearancesettingspage.h:606
+#: ../build/src/ui_appearancesettingspage.h:532
 msgid "A Taste of Strawbs"
 msgstr "Een voorproevertje  van Strawbs"
 
@@ -528,8 +524,8 @@ msgstr "API Token"
 msgid "ASF (WMA)"
 msgstr "ASF (WMA)"
 
-#: covermanager/albumcovermanager.cpp:142
-#: covermanager/albumcoversearcher.cpp:194
+#: covermanager/albumcovermanager.cpp:144
+#: covermanager/albumcoversearcher.cpp:196
 #: ../build/src/ui_internetcollectionviewcontainer.h:139
 msgid "Abort"
 msgstr "Afbreken"
@@ -582,11 +578,11 @@ msgstr ""
 msgid "Add all tracks from a directory and all its subdirectories"
 msgstr "Voeg alle nummers van een pad en alle onderliggende paden toe"
 
-#: settings/collectionsettingspage.cpp:123
+#: settings/collectionsettingspage.cpp:124
 msgid "Add directory..."
 msgstr "Map toevoegen…"
 
-#: core/mainwindow.cpp:2205
+#: core/mainwindow.cpp:2202
 msgid "Add file"
 msgstr "Bestand toevoegen"
 
@@ -602,7 +598,7 @@ msgstr "Bestand(en) toevoegen voor conversie."
 msgid "Add files to transcode"
 msgstr "Te converteren bestanden toevoegen"
 
-#: core/mainwindow.cpp:2231 transcoder/transcodedialog.cpp:424
+#: core/mainwindow.cpp:2228 transcoder/transcodedialog.cpp:424
 msgid "Add folder"
 msgstr "Map toevoegen"
 
@@ -712,7 +708,7 @@ msgstr "Stream... toevoegen"
 msgid "Add to albums"
 msgstr "Aan de albums toevoegen"
 
-#: core/mainwindow.cpp:2007
+#: core/mainwindow.cpp:2004
 msgid "Add to another playlist"
 msgstr "Aan een andere afspeellijst toevoegen"
 
@@ -762,7 +758,7 @@ msgstr "Afgelopen drie maanden toegevoegd"
 msgid "Advanced"
 msgstr "Geavanceerd"
 
-#: collection/collectionfilterwidget.cpp:325
+#: collection/collectionfilterwidget.cpp:326
 msgid "Advanced grouping..."
 msgstr "Geavanceerd groeperen…"
 
@@ -774,7 +770,7 @@ msgstr "Geavanceerde instelling die een herstart vereist."
 msgid "After copying..."
 msgstr "Na het kopiëren…"
 
-#: ../build/src/ui_appearancesettingspage.h:605
+#: ../build/src/ui_appearancesettingspage.h:531
 msgid "Albu&m cover"
 msgstr "Albu&m Hoes"
 
@@ -784,7 +780,7 @@ msgstr "Albu&m Hoes"
 #: ../build/src/ui_albumcoversearcher.h:107
 #: ../build/src/ui_albumcoversearcher.h:109
 #: ../build/src/ui_contextsettingspage.h:433
-#: ../build/src/ui_edittagdialog.h:822
+#: ../build/src/ui_edittagdialog.h:848
 #: ../build/src/ui_trackselectiondialog.h:207
 msgid "Album"
 msgstr "Album"
@@ -801,11 +797,11 @@ msgstr "Album - cd"
 #: collection/savedgroupingmanager.cpp:91 playlist/playlist.cpp:1342
 #: organize/organizedialog.cpp:105 ../build/src/ui_groupbydialog.h:192
 #: ../build/src/ui_groupbydialog.h:214 ../build/src/ui_groupbydialog.h:236
-#: ../build/src/ui_edittagdialog.h:821
+#: ../build/src/ui_edittagdialog.h:847
 msgid "Album artist"
 msgstr "Albumartiest"
 
-#: dialogs/edittagdialog.cpp:829
+#: dialogs/edittagdialog.cpp:876
 msgid "Album cover editing is only available for collection songs."
 msgstr ""
 "Het bewerken van de albumhoes is enkel beschikbaar voor verzamelingsliedjes."
@@ -827,27 +823,27 @@ msgstr "Albums"
 msgid "Albums search limit"
 msgstr "Albums zoek limiet"
 
-#: covermanager/albumcovermanager.cpp:172
+#: covermanager/albumcovermanager.cpp:174
 msgid "Albums with covers"
 msgstr "Albums met albumhoes"
 
-#: covermanager/albumcovermanager.cpp:173
+#: covermanager/albumcovermanager.cpp:175
 msgid "Albums without covers"
 msgstr "Albums zonder albumhoes"
 
-#: core/mainwindow.cpp:217
+#: core/mainwindow.cpp:218
 msgid "All Files (*)"
 msgstr "Alle bestanden (*)"
 
-#: covermanager/albumcovermanager.cpp:171
+#: covermanager/albumcovermanager.cpp:173
 msgid "All albums"
 msgstr "Alle albums"
 
-#: covermanager/albumcovermanager.cpp:358
+#: covermanager/albumcovermanager.cpp:360
 msgid "All artists"
 msgstr "Alle artiesten"
 
-#: covermanager/albumcoverchoicecontroller.cpp:77
+#: covermanager/albumcoverchoicecontroller.cpp:79
 msgid "All files (*)"
 msgstr "Alle bestanden (*)"
 
@@ -881,13 +877,13 @@ msgstr "Altijd afspelen"
 msgid "An error occurred loading the iTunes database"
 msgstr "Er is een fout opgetreden tijdens het laden van de iTunes-database"
 
-#: dialogs/edittagdialog.cpp:1370
+#: dialogs/edittagdialog.cpp:1417
 #, qt-format
 msgid "An error occurred writing cover art to '%1'"
 msgstr ""
 "Er is een fout opgetreden bij het wegschrijven van hoes afbeelding naar %1"
 
-#: playlist/playlist.cpp:419 dialogs/edittagdialog.cpp:1347
+#: playlist/playlist.cpp:419 dialogs/edittagdialog.cpp:1394
 #, qt-format
 msgid "An error occurred writing metadata to '%1'"
 msgstr "Er is een fout opgetreden bij het wegschrijven van metadata naar ‘%1’"
@@ -904,7 +900,7 @@ msgstr "App ID"
 msgid "App Secret"
 msgstr "App geheim"
 
-#: ../build/src/ui_appearancesettingspage.h:581
+#: ../build/src/ui_appearancesettingspage.h:514
 msgid "Appearance"
 msgstr "Uiterlijk"
 
@@ -941,11 +937,11 @@ msgstr "Bent u zeker dat u wilt door gaan ?"
 msgid "Are you sure you want to delete the \"%1\" preset?"
 msgstr "Weet u zeker dat u voorinstelling ‘%1’ wilt wissen?"
 
-#: dialogs/edittagdialog.cpp:1251
+#: dialogs/edittagdialog.cpp:1298
 msgid "Are you sure you want to reset this song's statistics?"
 msgstr "Weet u zeker dat u de statistieken van dit nummer wilt wissen?"
 
-#: settings/collectionsettingspage.cpp:381
+#: settings/collectionsettingspage.cpp:382
 msgid ""
 "Are you sure you want to write song playcounts and ratings to file for all "
 "songs in your collection?"
@@ -953,11 +949,11 @@ msgstr ""
 "Ben je zeker dat je het aantal maal afgespeeld en beoordelingen wilt "
 "wegschrijven voor alle liedjes in je verzameling?"
 
-#: ../build/src/ui_edittagdialog.h:813
+#: ../build/src/ui_edittagdialog.h:839
 msgid "Art Automatic"
 msgstr "Hoes automatisch"
 
-#: ../build/src/ui_edittagdialog.h:810
+#: ../build/src/ui_edittagdialog.h:836
 msgid "Art Manual"
 msgstr "Hoes handmatig"
 
@@ -965,7 +961,7 @@ msgstr "Hoes handmatig"
 #: organize/organizedialog.cpp:103 ../build/src/ui_groupbydialog.h:191
 #: ../build/src/ui_groupbydialog.h:213 ../build/src/ui_groupbydialog.h:235
 #: ../build/src/ui_albumcoversearcher.h:103
-#: ../build/src/ui_albumcoversearcher.h:105 ../build/src/ui_edittagdialog.h:825
+#: ../build/src/ui_albumcoversearcher.h:105 ../build/src/ui_edittagdialog.h:851
 #: ../build/src/ui_trackselectiondialog.h:208
 msgid "Artist"
 msgstr "Artiest"
@@ -1000,7 +996,7 @@ msgstr "Audiouitvoer"
 msgid "Audio quality"
 msgstr "Audio kwaliteit"
 
-#: tidal/tidalrequest.cpp:115 qobuz/qobuzservice.cpp:284
+#: tidal/tidalrequest.cpp:138 qobuz/qobuzservice.cpp:286
 msgid "Authenticating..."
 msgstr "Authenticatie"
 
@@ -1037,7 +1033,7 @@ msgstr "Automatisch"
 msgid "Automatic updating"
 msgstr "Automatisch updaten"
 
-#: dialogs/edittagdialog.cpp:824
+#: dialogs/edittagdialog.cpp:871
 #, qt-format
 msgid "Automatically cover art from %1 is missing"
 msgstr "Automatische hoes van 1% ontbreekt"
@@ -1050,7 +1046,7 @@ msgstr "Automatisch enkelvoudige categorieën in bibliotheekboom openen"
 msgid "Automatically search for album cover"
 msgstr "Automatisch zoeken voor albumhoes"
 
-#: context/contextview.cpp:313 ../build/src/ui_contextsettingspage.h:438
+#: context/contextview.cpp:314 ../build/src/ui_contextsettingspage.h:438
 msgid "Automatically search for song lyrics"
 msgstr "Automatisch zoeken voor liedjestekst"
 
@@ -1066,7 +1062,7 @@ msgstr ""
 msgid "Available"
 msgstr "Beschikbaar"
 
-#: collection/collectionfilterwidget.cpp:88
+#: collection/collectionfilterwidget.cpp:89
 msgid "Available fields"
 msgstr ""
 
@@ -1086,7 +1082,7 @@ msgstr ""
 msgid "Background color"
 msgstr "Achtergrondkleur"
 
-#: ../build/src/ui_appearancesettingspage.h:599
+#: ../build/src/ui_appearancesettingspage.h:525
 msgid "Background image"
 msgstr "Achtergrondafbeelding"
 
@@ -1118,18 +1114,18 @@ msgstr "Gedrag"
 msgid "Best"
 msgstr "Beste"
 
-#: context/contextview.cpp:210 collection/savedgroupingmanager.cpp:145
+#: context/contextview.cpp:211 collection/savedgroupingmanager.cpp:145
 #: playlist/playlist.cpp:1352 organize/organizedialog.cpp:118
 #: ../build/src/ui_groupbydialog.h:208 ../build/src/ui_groupbydialog.h:230
-#: ../build/src/ui_groupbydialog.h:252 ../build/src/ui_edittagdialog.h:800
+#: ../build/src/ui_groupbydialog.h:252 ../build/src/ui_edittagdialog.h:826
 msgid "Bit depth"
 msgstr ""
 
-#: ../build/src/ui_edittagdialog.h:811
+#: ../build/src/ui_edittagdialog.h:837
 msgid "Bit rate"
 msgstr "Bitrate"
 
-#: context/contextview.cpp:211 collection/savedgroupingmanager.cpp:148
+#: context/contextview.cpp:212 collection/savedgroupingmanager.cpp:148
 #: playlist/playlist.cpp:1353 ../build/src/ui_groupbydialog.h:209
 #: ../build/src/ui_groupbydialog.h:231 ../build/src/ui_groupbydialog.h:253
 #: ../build/src/ui_transcoderoptionsaac.h:132
@@ -1153,7 +1149,7 @@ msgstr "Blokweergave"
 msgid "Block type"
 msgstr "Bloktype"
 
-#: ../build/src/ui_appearancesettingspage.h:620
+#: ../build/src/ui_appearancesettingspage.h:546
 msgid "Blur amount"
 msgstr "Vervagen"
 
@@ -1165,15 +1161,15 @@ msgstr "Body"
 msgid "Boom analyzer"
 msgstr "Boomweergave"
 
-#: ../build/src/ui_appearancesettingspage.h:613
+#: ../build/src/ui_appearancesettingspage.h:539
 msgid "Bottom Left"
 msgstr ""
 
-#: ../build/src/ui_appearancesettingspage.h:614
+#: ../build/src/ui_appearancesettingspage.h:540
 msgid "Bottom Right"
 msgstr ""
 
-#: ../build/src/ui_appearancesettingspage.h:608
+#: ../build/src/ui_appearancesettingspage.h:534
 msgid "Browse..."
 msgstr "Bladeren…"
 
@@ -1213,7 +1209,7 @@ msgstr ""
 msgid "Cancelled."
 msgstr ""
 
-#: ../build/src/ui_edittagdialog.h:817
+#: ../build/src/ui_edittagdialog.h:843
 msgid "Change art"
 msgstr ""
 
@@ -1237,7 +1233,7 @@ msgstr "Verander het huidige nummer"
 msgid "Change the language"
 msgstr "De taal wijzigen"
 
-#: core/mainwindow.cpp:802
+#: core/mainwindow.cpp:803
 msgid "Check for updates..."
 msgstr "Zoeken naar updates..."
 
@@ -1282,11 +1278,11 @@ msgstr "Wissen"
 msgid "Clear Disk Cache"
 msgstr ""
 
-#: covermanager/albumcoverchoicecontroller.cpp:112
+#: covermanager/albumcoverchoicecontroller.cpp:114
 msgid "Clear cover"
 msgstr ""
 
-#: core/mainwindow.cpp:2296 ../build/src/ui_mainwindow.h:637
+#: core/mainwindow.cpp:2293 ../build/src/ui_mainwindow.h:637
 msgid "Clear playlist"
 msgstr "Afspeellijst wissen"
 
@@ -1323,7 +1319,7 @@ msgstr "Sluiten"
 msgid "Close playlist"
 msgstr "Afspeellijst sluiten"
 
-#: covermanager/albumcovermanager.cpp:260
+#: covermanager/albumcovermanager.cpp:262
 msgid "Closing this window will stop searching for album covers."
 msgstr "Het zoeken naar albumhoezen wordt afgebroken als u dit venster sluit."
 
@@ -1331,7 +1327,7 @@ msgstr "Het zoeken naar albumhoezen wordt afgebroken als u dit venster sluit."
 msgid "Club"
 msgstr "Club"
 
-#: core/mainwindow.cpp:367 ../build/src/ui_collectionsettingspage.h:589
+#: core/mainwindow.cpp:368 ../build/src/ui_collectionsettingspage.h:589
 #: ../build/src/ui_scrobblersettingspage.h:418
 msgid "Collection"
 msgstr "Bibliotheek"
@@ -1344,7 +1340,7 @@ msgstr "Verzamelingsfilter"
 msgid "Collection advanced grouping"
 msgstr "Bibliotheek geavanceerd groeperen"
 
-#: core/mainwindow.cpp:2869
+#: core/mainwindow.cpp:2866
 msgid "Collection rescan notice"
 msgstr "Database herscan-melding"
 
@@ -1352,25 +1348,21 @@ msgstr "Database herscan-melding"
 msgid "Collection search"
 msgstr "Zoeken in verzameling"
 
-#: ../build/src/ui_appearancesettingspage.h:586
-msgid "Colors"
-msgstr "Kleuren"
-
 #: core/commandlineoptions.cpp:193
 msgid "Comma separated list of class:level, level is 0-3"
 msgstr ""
 "Door komma's gescheiden lijst van van klasse:niveau, het niveau is 0-3"
 
 #: playlist/playlist.cpp:1362 smartplaylists/smartplaylistsearchterm.cpp:389
-#: organize/organizedialog.cpp:114 ../build/src/ui_edittagdialog.h:829
+#: organize/organizedialog.cpp:114 ../build/src/ui_edittagdialog.h:855
 msgid "Comment"
 msgstr "Opmerking"
 
-#: ../build/src/ui_edittagdialog.h:831
+#: ../build/src/ui_edittagdialog.h:857
 msgid "Compilation"
 msgstr "Compilatie"
 
-#: ../build/src/ui_edittagdialog.h:827
+#: ../build/src/ui_edittagdialog.h:853
 msgid "Complete tags automatically"
 msgstr "Labels automatisch voltooien"
 
@@ -1381,7 +1373,7 @@ msgstr "Labels automatisch voltooien…"
 #: collection/savedgroupingmanager.cpp:127 playlist/playlist.cpp:1343
 #: organize/organizedialog.cpp:106 ../build/src/ui_groupbydialog.h:203
 #: ../build/src/ui_groupbydialog.h:225 ../build/src/ui_groupbydialog.h:247
-#: ../build/src/ui_edittagdialog.h:826
+#: ../build/src/ui_edittagdialog.h:852
 msgid "Composer"
 msgstr "Componist"
 
@@ -1402,11 +1394,11 @@ msgstr "Configuratie verkeerd"
 msgid "Configure %1..."
 msgstr "Configureren %1"
 
-#: ../build/src/ui_appearancesettingspage.h:628
+#: ../build/src/ui_appearancesettingspage.h:554
 msgid "Configure buttons"
 msgstr "Configureer knoppen"
 
-#: core/mainwindow.cpp:679
+#: core/mainwindow.cpp:680
 msgid "Configure collection..."
 msgstr "Bibliotheek configureren…"
 
@@ -1422,7 +1414,7 @@ msgstr "Console"
 msgid "Constant bitrate"
 msgstr "Constante bitrate"
 
-#: core/mainwindow.cpp:366 ../build/src/ui_contextsettingspage.h:363
+#: core/mainwindow.cpp:367 ../build/src/ui_contextsettingspage.h:363
 msgid "Context"
 msgstr "Context"
 
@@ -1444,7 +1436,7 @@ msgstr "Alle muziek converteren"
 msgid "Convert any music that the device can't play"
 msgstr "Alle muziek die het apparaat niet kan afspelen converteren"
 
-#: core/mainwindow.cpp:748
+#: core/mainwindow.cpp:749
 msgid "Copy URL(s)..."
 msgstr "Kopieer URL(s)..."
 
@@ -1452,7 +1444,7 @@ msgstr "Kopieer URL(s)..."
 msgid "Copy album cover artwork"
 msgstr "Kopieer albumhoes"
 
-#: core/mainwindow.cpp:752 widgets/fileviewlist.cpp:46
+#: core/mainwindow.cpp:753 widgets/fileviewlist.cpp:46
 #: device/deviceview.cpp:246
 msgid "Copy to collection..."
 msgstr "Naar bibliotheek kopiëren…"
@@ -1461,7 +1453,7 @@ msgstr "Naar bibliotheek kopiëren…"
 msgid "Copy to device"
 msgstr "Kopieer naar toestel"
 
-#: core/mainwindow.cpp:755 collection/collectionview.cpp:359
+#: core/mainwindow.cpp:756 collection/collectionview.cpp:359
 #: playlist/playlistlistcontainer.cpp:89 widgets/fileviewlist.cpp:48
 msgid "Copy to device..."
 msgstr "Naar apparaat kopiëren…"
@@ -1534,40 +1526,40 @@ msgstr ""
 msgid "Cover Manager"
 msgstr "Albumhoesbeheerder"
 
-#: dialogs/edittagdialog.cpp:818
+#: dialogs/edittagdialog.cpp:865
 #, qt-format
 msgid "Cover art automatically loaded from %1"
 msgstr "Hoes automatisch geladen van %1"
 
-#: dialogs/edittagdialog.cpp:815
+#: dialogs/edittagdialog.cpp:862
 msgid "Cover art from embedded image"
 msgstr "Albumhoes van toegevoegde afbeelding"
 
-#: dialogs/edittagdialog.cpp:809
+#: dialogs/edittagdialog.cpp:856
 msgid "Cover art manually unset"
 msgstr "Albumhoes handmatig teruggezet"
 
-#: dialogs/edittagdialog.cpp:806
+#: dialogs/edittagdialog.cpp:853
 msgid "Cover art not set"
 msgstr "Albumhoes niet ingesteld"
 
-#: dialogs/edittagdialog.cpp:790
+#: dialogs/edittagdialog.cpp:837
 msgid "Cover changed: Will be cleared when saved."
 msgstr "Hoes veranderd: Zal gewist worden bij opslaan."
 
-#: dialogs/edittagdialog.cpp:796
+#: dialogs/edittagdialog.cpp:843
 msgid "Cover changed: Will be deleted when saved."
 msgstr ""
 
-#: dialogs/edittagdialog.cpp:793
+#: dialogs/edittagdialog.cpp:840
 msgid "Cover changed: Will be unset when saved."
 msgstr ""
 
-#: dialogs/edittagdialog.cpp:799
+#: dialogs/edittagdialog.cpp:846
 msgid "Cover changed: Will set new when saved."
 msgstr ""
 
-#: covermanager/albumcoverchoicecontroller.cpp:187
+#: covermanager/albumcoverchoicecontroller.cpp:189
 #, qt-format
 msgid "Cover file %1 is empty."
 msgstr ""
@@ -1580,7 +1572,7 @@ msgstr ""
 msgid "Covers"
 msgstr ""
 
-#: covermanager/albumcoversearcher.cpp:128
+#: covermanager/albumcoversearcher.cpp:130
 #: covermanager/coversearchstatisticsdialog.cpp:73
 #, qt-format
 msgid "Covers from %1"
@@ -1666,11 +1658,11 @@ msgstr ""
 msgid "Custom"
 msgstr "Aangepast"
 
-#: ../build/src/ui_appearancesettingspage.h:633
+#: ../build/src/ui_appearancesettingspage.h:559
 msgid "Custom color"
 msgstr ""
 
-#: ../build/src/ui_appearancesettingspage.h:607
+#: ../build/src/ui_appearancesettingspage.h:533
 msgid "Custom image:"
 msgstr "Aangepaste afbeelding:"
 
@@ -1698,11 +1690,11 @@ msgstr "Dance"
 msgid "Database corruption detected."
 msgstr ""
 
-#: playlist/playlist.cpp:1360 ../build/src/ui_edittagdialog.h:806
+#: playlist/playlist.cpp:1360 ../build/src/ui_edittagdialog.h:832
 msgid "Date created"
 msgstr "Aanmaakdatum"
 
-#: playlist/playlist.cpp:1359 ../build/src/ui_edittagdialog.h:804
+#: playlist/playlist.cpp:1359 ../build/src/ui_edittagdialog.h:830
 msgid "Date modified"
 msgstr "Wijzigingsdatum"
 
@@ -1722,7 +1714,7 @@ msgstr "Verlaag het volume met <value> procent"
 msgid "Decrease volume"
 msgstr "Volume verminderen"
 
-#: ../build/src/ui_appearancesettingspage.h:600
+#: ../build/src/ui_appearancesettingspage.h:526
 msgid "Default bac&kground image"
 msgstr "Standaard achter&grondafbeelding"
 
@@ -1735,7 +1727,7 @@ msgstr "Standaarden"
 msgid "Delete"
 msgstr "Verwijderen"
 
-#: covermanager/albumcoverchoicecontroller.cpp:111
+#: covermanager/albumcoverchoicecontroller.cpp:113
 msgid "Delete cover"
 msgstr "Hoes wissen"
 
@@ -1747,7 +1739,7 @@ msgstr "Bestanden verwijderen"
 msgid "Delete from device..."
 msgstr "Van apparaat verwijderen…"
 
-#: core/mainwindow.cpp:757 collection/collectionview.cpp:361
+#: core/mainwindow.cpp:758 collection/collectionview.cpp:361
 #: widgets/fileviewlist.cpp:49
 msgid "Delete from disk..."
 msgstr "Van schijf verwijderen…"
@@ -1773,11 +1765,11 @@ msgstr "Oorspronkelijke bestanden verwijderen"
 msgid "Deleting files"
 msgstr "Bestanden worden verwijderd"
 
-#: core/mainwindow.cpp:1922
+#: core/mainwindow.cpp:1919
 msgid "Dequeue selected tracks"
 msgstr "Geselecteerde nummers uit wachtrij verwijderen"
 
-#: core/mainwindow.cpp:1921
+#: core/mainwindow.cpp:1918
 msgid "Dequeue track"
 msgstr "Nummer uit wachtrij verwijderen"
 
@@ -1789,7 +1781,7 @@ msgstr "Bestemming"
 msgid "Details..."
 msgstr "Details…"
 
-#: context/contextview.cpp:178 device/giolister.cpp:193
+#: context/contextview.cpp:179 device/giolister.cpp:192
 #: ../build/src/ui_backendsettingspage.h:559
 #: ../build/src/ui_scrobblersettingspage.h:422
 msgid "Device"
@@ -1803,11 +1795,11 @@ msgstr "Apparaateigenschappen"
 msgid "Device properties..."
 msgstr "Apparaateigenschappen…"
 
-#: core/mainwindow.cpp:374
+#: core/mainwindow.cpp:375
 msgid "Devices"
 msgstr "Toestellen"
 
-#: dialogs/edittagdialog.cpp:99
+#: dialogs/edittagdialog.cpp:101
 msgid "Different art across multiple songs."
 msgstr "Verschillende hoesjes over meerdere liedjes."
 
@@ -1835,7 +1827,7 @@ msgstr "Uitgeschakeld"
 #: collection/savedgroupingmanager.cpp:115 playlist/playlist.cpp:1337
 #: organize/organizedialog.cpp:110 ../build/src/ui_groupbydialog.h:195
 #: ../build/src/ui_groupbydialog.h:217 ../build/src/ui_groupbydialog.h:239
-#: ../build/src/ui_edittagdialog.h:819
+#: ../build/src/ui_edittagdialog.h:845
 msgid "Disc"
 msgstr "Schijf"
 
@@ -1847,7 +1839,7 @@ msgstr "Overdracht onderbreken"
 msgid "Disk Cache Size"
 msgstr "Schijfcachegrootte"
 
-#: collection/collectionfilterwidget.cpp:129
+#: collection/collectionfilterwidget.cpp:130
 #: ../build/src/ui_collectionsettingspage.h:605
 msgid "Display options"
 msgstr "Weergaveopties"
@@ -1860,7 +1852,7 @@ msgstr "Infoschermvenster weergeven"
 msgid "Do not convert any music"
 msgstr "Geen muziek converteren"
 
-#: ../build/src/ui_appearancesettingspage.h:619
+#: ../build/src/ui_appearancesettingspage.h:545
 msgid "Do not cut image"
 msgstr "Afbeelding niet bijsnijden"
 
@@ -1884,7 +1876,7 @@ msgstr "Niet in diverse artiesten weergeven"
 msgid "Don't shuffle"
 msgstr "Niet willekeurig afspelen"
 
-#: covermanager/albumcovermanager.cpp:261
+#: covermanager/albumcovermanager.cpp:263
 msgid "Don't stop!"
 msgstr "Niet stoppen!"
 
@@ -1943,7 +1935,7 @@ msgstr "Slimme afspeellijst bewerken"
 msgid "Edit smart playlist..."
 msgstr "Slimme afspeellijst bewerken..."
 
-#: core/mainwindow.cpp:1965
+#: core/mainwindow.cpp:1962
 #, qt-format
 msgid "Edit tag \"%1\"..."
 msgstr "Label ‘%1’ bewerken…"
@@ -1952,7 +1944,7 @@ msgstr "Label ‘%1’ bewerken…"
 msgid "Edit tag..."
 msgstr "Label bewerken…"
 
-#: ../build/src/ui_edittagdialog.h:796
+#: ../build/src/ui_edittagdialog.h:822
 msgid "Edit track information"
 msgstr "Nummerinformatie bewerken"
 
@@ -1965,11 +1957,11 @@ msgstr "Nummerinformatie bewerken…"
 msgid "Edit tracks information..."
 msgstr "Nummerinformatie bewerken…"
 
-#: dialogs/edittagdialog.cpp:775
+#: dialogs/edittagdialog.cpp:822
 msgid "Embedded"
 msgstr "Ingekapseld"
 
-#: ../build/src/ui_edittagdialog.h:818
+#: ../build/src/ui_edittagdialog.h:844
 msgid "Embedded cover"
 msgstr "Ingekapseld hoesje"
 
@@ -2052,7 +2044,7 @@ msgstr "Kwaliteit encoding-engine"
 msgid "Encoding mode"
 msgstr "Coderings-modus"
 
-#: context/contextview.cpp:177 ../build/src/ui_backendsettingspage.h:562
+#: context/contextview.cpp:178 ../build/src/ui_backendsettingspage.h:562
 msgid "Engine"
 msgstr ""
 
@@ -2114,7 +2106,7 @@ msgstr "Gelijkwaardig aan --log-levels *:1"
 msgid "Equivalent to --log-levels *:3"
 msgstr "Gelijkwaardig aan --log-levels *:3"
 
-#: core/mainwindow.cpp:2600 core/mainwindow.cpp:2751
+#: core/mainwindow.cpp:2597 core/mainwindow.cpp:2748
 #: collection/collectionview.cpp:586
 msgid "Error"
 msgstr "Fout"
@@ -2194,12 +2186,12 @@ msgstr "Exporteer gedownloade albumhoezen"
 msgid "Export embedded covers"
 msgstr "Exporteer albumhoezen in mediabestanden"
 
-#: covermanager/albumcovermanager.cpp:1038
-#: covermanager/albumcovermanager.cpp:1064
+#: covermanager/albumcovermanager.cpp:1040
+#: covermanager/albumcovermanager.cpp:1066
 msgid "Export finished"
 msgstr "Klaar me exporteren"
 
-#: covermanager/albumcovermanager.cpp:1049
+#: covermanager/albumcovermanager.cpp:1051
 #, qt-format
 msgid "Exported %1 covers out of %2 (%3 skipped)"
 msgstr "%1 van %2 albumhoezen geëxporteerd (%3 overgeslagen)"
@@ -2249,34 +2241,34 @@ msgstr "Uitvagen"
 msgid "Fading duration"
 msgstr "Uitvaagduur"
 
-#: covermanager/albumcoverchoicecontroller.cpp:405
-#: covermanager/albumcoverchoicecontroller.cpp:422
+#: covermanager/albumcoverchoicecontroller.cpp:407
+#: covermanager/albumcoverchoicecontroller.cpp:424
 #, qt-format
 msgid "Failed to delete cover file %1: %2"
 msgstr "Kan hoesbestand %1 niet verwijderen: %2"
 
-#: covermanager/albumcoverchoicecontroller.cpp:197
+#: covermanager/albumcoverchoicecontroller.cpp:199
 #, qt-format
 msgid "Failed to open cover file %1 for reading: %2"
 msgstr "Kan hoesbestand %1 niet openen voor lezen: %2"
 
-#: covermanager/albumcoverchoicecontroller.cpp:271
-#: covermanager/albumcoverchoicecontroller.cpp:641
+#: covermanager/albumcoverchoicecontroller.cpp:273
+#: covermanager/albumcoverchoicecontroller.cpp:643
 #, qt-format
 msgid "Failed to open cover file %1 for writing: %2"
 msgstr "Kan hoesbestand %1 niet openen voor schrijven: %2"
 
-#: covermanager/albumcoverchoicecontroller.cpp:635
+#: covermanager/albumcoverchoicecontroller.cpp:637
 #, qt-format
 msgid "Failed to write cover to file %1: %2"
 msgstr "Kan hoes niet schrijven naar bestand %1: %2"
 
-#: covermanager/albumcoverchoicecontroller.cpp:277
+#: covermanager/albumcoverchoicecontroller.cpp:279
 #, qt-format
 msgid "Failed writing cover to file %1."
 msgstr "Kan hoes niet wegschrijven naar bestand %1."
 
-#: covermanager/albumcoverchoicecontroller.cpp:265
+#: covermanager/albumcoverchoicecontroller.cpp:267
 #, qt-format
 msgid "Failed writing cover to file %1: %2"
 msgstr "Kan hoes niet wegschrijven naar bestand %1: %2"
@@ -2345,17 +2337,17 @@ msgstr "Bestandsnaam (zonder pad)"
 msgid "File paths"
 msgstr "Bestandspaden"
 
-#: playlist/playlist.cpp:1357 ../build/src/ui_edittagdialog.h:812
+#: playlist/playlist.cpp:1357 ../build/src/ui_edittagdialog.h:838
 msgid "File size"
 msgstr "Bestandsgrootte"
 
 #: collection/savedgroupingmanager.cpp:136 playlist/playlist.cpp:1358
 #: ../build/src/ui_groupbydialog.h:206 ../build/src/ui_groupbydialog.h:228
-#: ../build/src/ui_groupbydialog.h:250 ../build/src/ui_edittagdialog.h:799
+#: ../build/src/ui_groupbydialog.h:250 ../build/src/ui_edittagdialog.h:825
 msgid "File type"
 msgstr "Bestandstype"
 
-#: ../build/src/ui_edittagdialog.h:801 ../build/src/ui_transcodedialog.h:219
+#: ../build/src/ui_edittagdialog.h:827 ../build/src/ui_transcodedialog.h:219
 msgid "Filename"
 msgstr "Bestandsnaam"
 
@@ -2363,7 +2355,7 @@ msgstr "Bestandsnaam"
 msgid "Filename:"
 msgstr ""
 
-#: core/mainwindow.cpp:371
+#: core/mainwindow.cpp:372
 msgid "Files"
 msgstr ""
 
@@ -2371,11 +2363,11 @@ msgstr ""
 msgid "Files to transcode"
 msgstr "Te converteren bestanden"
 
-#: ../build/src/ui_appearancesettingspage.h:629
+#: ../build/src/ui_appearancesettingspage.h:555
 msgid "Files, playlists and queue buttons"
 msgstr ""
 
-#: context/contextview.cpp:207
+#: context/contextview.cpp:208
 msgid "Filetype"
 msgstr ""
 
@@ -2497,7 +2489,7 @@ msgstr "Maximale bas + hoge tonen"
 msgid "Full Treble"
 msgstr "Maximale hoge tonen"
 
-#: settings/settingsdialog.cpp:132
+#: settings/settingsdialog.cpp:131
 msgid "General"
 msgstr "Algemeen"
 
@@ -2505,14 +2497,14 @@ msgstr "Algemeen"
 msgid "General settings"
 msgstr "Algemene instellingen"
 
-#: lyrics/geniuslyricsprovider.cpp:124
+#: lyrics/geniuslyricsprovider.cpp:125
 msgid "Genius Authentication"
 msgstr ""
 
 #: collection/savedgroupingmanager.cpp:124 playlist/playlist.cpp:1341
 #: organize/organizedialog.cpp:113 ../build/src/ui_groupbydialog.h:197
 #: ../build/src/ui_groupbydialog.h:219 ../build/src/ui_groupbydialog.h:241
-#: ../build/src/ui_edittagdialog.h:828
+#: ../build/src/ui_edittagdialog.h:854
 msgid "Genre"
 msgstr "Genre"
 
@@ -2537,7 +2529,7 @@ msgstr "Ga naar het vorige afspeellijst tabblad"
 msgid "Go!"
 msgstr ""
 
-#: covermanager/albumcovermanager.cpp:568
+#: covermanager/albumcovermanager.cpp:570
 #: covermanager/coversearchstatisticsdialog.cpp:67
 #: ../build/src/ui_coversearchstatisticsdialog.h:72
 #, qt-format
@@ -2556,79 +2548,79 @@ msgstr ""
 msgid "Group Collection by..."
 msgstr "Bibliotheek groeperen op…"
 
-#: collection/collectionfilterwidget.cpp:123
+#: collection/collectionfilterwidget.cpp:124
 #: internet/internetsearchview.cpp:345
 msgid "Group by"
 msgstr "Groeperen op"
 
-#: collection/collectionfilterwidget.cpp:290
+#: collection/collectionfilterwidget.cpp:291
 msgid "Group by Album"
 msgstr "Groeperen op album"
 
-#: collection/collectionfilterwidget.cpp:287
+#: collection/collectionfilterwidget.cpp:288
 msgid "Group by Album Artist"
 msgstr ""
 
-#: collection/collectionfilterwidget.cpp:274
+#: collection/collectionfilterwidget.cpp:275
 msgid "Group by Album artist/Album"
 msgstr "Groeperen op Album Artiest/Album"
 
-#: collection/collectionfilterwidget.cpp:275
+#: collection/collectionfilterwidget.cpp:276
 msgid "Group by Album artist/Album - Disc"
 msgstr ""
 
-#: collection/collectionfilterwidget.cpp:276
+#: collection/collectionfilterwidget.cpp:277
 msgid "Group by Album artist/Year - Album"
 msgstr ""
 
-#: collection/collectionfilterwidget.cpp:277
+#: collection/collectionfilterwidget.cpp:278
 msgid "Group by Album artist/Year - Album - Disc"
 msgstr ""
 
-#: collection/collectionfilterwidget.cpp:288
+#: collection/collectionfilterwidget.cpp:289
 msgid "Group by Artist"
 msgstr "Groeperen op artiest"
 
-#: collection/collectionfilterwidget.cpp:279
+#: collection/collectionfilterwidget.cpp:280
 msgid "Group by Artist/Album"
 msgstr "Groeperen op artiest/album"
 
-#: collection/collectionfilterwidget.cpp:280
+#: collection/collectionfilterwidget.cpp:281
 msgid "Group by Artist/Album - Disc"
 msgstr ""
 
-#: collection/collectionfilterwidget.cpp:281
+#: collection/collectionfilterwidget.cpp:282
 msgid "Group by Artist/Year - Album"
 msgstr "Groeperen op artiest/jaar - album"
 
-#: collection/collectionfilterwidget.cpp:282
+#: collection/collectionfilterwidget.cpp:283
 msgid "Group by Artist/Year - Album - Disc"
 msgstr ""
 
-#: collection/collectionfilterwidget.cpp:291
+#: collection/collectionfilterwidget.cpp:292
 msgid "Group by Genre/Album"
 msgstr "Groeperen op genre/album"
 
-#: collection/collectionfilterwidget.cpp:284
+#: collection/collectionfilterwidget.cpp:285
 msgid "Group by Genre/Album artist/Album"
 msgstr ""
 
-#: collection/collectionfilterwidget.cpp:285
+#: collection/collectionfilterwidget.cpp:286
 msgid "Group by Genre/Artist/Album"
 msgstr "Groeperen op genre/artiest/album"
 
 #: collection/savedgroupingmanager.cpp:133 playlist/playlist.cpp:1345
 #: organize/organizedialog.cpp:108 ../build/src/ui_groupbydialog.h:205
 #: ../build/src/ui_groupbydialog.h:227 ../build/src/ui_groupbydialog.h:249
-#: ../build/src/ui_edittagdialog.h:820
+#: ../build/src/ui_edittagdialog.h:846
 msgid "Grouping"
 msgstr "Groepering"
 
-#: collection/collectionfilterwidget.cpp:348
+#: collection/collectionfilterwidget.cpp:349
 msgid "Grouping Name"
 msgstr "Naam Groepering"
 
-#: collection/collectionfilterwidget.cpp:348
+#: collection/collectionfilterwidget.cpp:349
 msgid "Grouping name:"
 msgstr "Naam groepering:"
 
@@ -2687,7 +2679,7 @@ msgstr ""
 msgid "Icon"
 msgstr "Pictogram"
 
-#: ../build/src/ui_appearancesettingspage.h:624
+#: ../build/src/ui_appearancesettingspage.h:550
 msgid "Icon sizes"
 msgstr ""
 
@@ -2721,12 +2713,12 @@ msgid ""
 "donating."
 msgstr ""
 
-#: covermanager/albumcoverchoicecontroller.cpp:75
+#: covermanager/albumcoverchoicecontroller.cpp:77
 msgid "Images (*.png *.jpg *.jpeg *.bmp *.gif *.xpm *.pbm *.pgm *.ppm *.xbm)"
 msgstr ""
 "Afbeeldingen (*.png *.jpg *.jpeg *.bmp *.gif *.xpm *.pbm *.pgm *.ppm *.xbm)"
 
-#: covermanager/albumcoverchoicecontroller.cpp:76
+#: covermanager/albumcoverchoicecontroller.cpp:78
 msgid "Images (*.png *.jpg *.jpeg *.bmp *.xpm *.pbm *.ppm *.xbm)"
 msgstr "Afbeeldingen (*.png *.jpg *.jpeg *.bmp *.xpm *.pbm *.ppm *.xbm)"
 
@@ -2746,12 +2738,12 @@ msgstr ""
 msgid "Improve headphone listening of stereo audio records (bs2b)"
 msgstr ""
 
-#: core/utilities.cpp:179
+#: utilities/timeutils.cpp:101
 #, qt-format
 msgid "In %1 days"
 msgstr "In %1 dagen"
 
-#: core/utilities.cpp:182
+#: utilities/timeutils.cpp:104
 #, qt-format
 msgid "In %1 weeks"
 msgstr "In %1 weken"
@@ -2828,7 +2820,7 @@ msgstr ""
 msgid "Jump to previous song right away"
 msgstr "Meteen naar vorige nummer springen"
 
-#: ../build/src/ui_appearancesettingspage.h:618
+#: ../build/src/ui_appearancesettingspage.h:544
 msgid "Keep aspect ratio"
 msgstr ""
 
@@ -2865,7 +2857,7 @@ msgstr "Grote zijbalk"
 msgid "Last played"
 msgstr "Laast afgespeeld"
 
-#: ../build/src/ui_edittagdialog.h:809
+#: ../build/src/ui_edittagdialog.h:835
 msgctxt "A playlist's tag."
 msgid "Last played"
 msgstr "Laast afgespeeld"
@@ -2887,8 +2879,8 @@ msgstr ""
 msgid "Left"
 msgstr "Links"
 
-#: context/contextview.cpp:208 playlist/playlist.cpp:1338
-#: organize/organizedialog.cpp:115 ../build/src/ui_edittagdialog.h:798
+#: context/contextview.cpp:209 playlist/playlist.cpp:1338
+#: organize/organizedialog.cpp:115 ../build/src/ui_edittagdialog.h:824
 msgid "Length"
 msgstr "Duur"
 
@@ -2920,16 +2912,16 @@ msgstr "Laden"
 msgid "Load cover from URL"
 msgstr "Albumhoes van URL laden"
 
-#: covermanager/albumcoverchoicecontroller.cpp:108
+#: covermanager/albumcoverchoicecontroller.cpp:110
 msgid "Load cover from URL..."
 msgstr "Albumhoes van URL laden…"
 
-#: covermanager/albumcoverchoicecontroller.cpp:176
-#: covermanager/albumcoverchoicecontroller.cpp:208
+#: covermanager/albumcoverchoicecontroller.cpp:178
+#: covermanager/albumcoverchoicecontroller.cpp:210
 msgid "Load cover from disk"
 msgstr "Albumhoes van schijf laden"
 
-#: covermanager/albumcoverchoicecontroller.cpp:106
+#: covermanager/albumcoverchoicecontroller.cpp:108
 msgid "Load cover from disk..."
 msgstr "Albumhoes van schijf laden…"
 
@@ -2949,11 +2941,11 @@ msgstr "iPod-database laden"
 msgid "Loading smart playlist"
 msgstr ""
 
-#: collection/collectionmodel.cpp:197
+#: collection/collectionmodel.cpp:199
 msgid "Loading songs"
 msgstr "Nummers laden"
 
-#: playlist/songloaderinserter.cpp:170 dialogs/edittagdialog.cpp:408
+#: playlist/songloaderinserter.cpp:170 dialogs/edittagdialog.cpp:410
 msgid "Loading tracks"
 msgstr "Nummers laden"
 
@@ -2961,7 +2953,7 @@ msgstr "Nummers laden"
 msgid "Loading tracks info"
 msgstr "Nummerinformatie laden"
 
-#: collection/collectionmodel.cpp:190
+#: collection/collectionmodel.cpp:192
 #: ../build/src/ui_smartplaylistsearchpreview.h:103
 #: ../build/src/ui_organizedialog.h:280
 msgid "Loading..."
@@ -3011,7 +3003,7 @@ msgstr ""
 msgid "Lowercase filename"
 msgstr ""
 
-#: ../build/src/ui_lyricssettingspage.h:162 ../build/src/ui_edittagdialog.h:836
+#: ../build/src/ui_lyricssettingspage.h:162 ../build/src/ui_edittagdialog.h:862
 msgid "Lyrics"
 msgstr ""
 
@@ -3035,12 +3027,12 @@ msgstr "Normaal profiel (MAIN)"
 msgid "Manage saved groupings"
 msgstr "Beheer opgeslagen groeperingen"
 
-#: dialogs/edittagdialog.cpp:821
+#: dialogs/edittagdialog.cpp:868
 #, qt-format
 msgid "Manually cover art from %1 is missing"
 msgstr ""
 
-#: dialogs/edittagdialog.cpp:812
+#: dialogs/edittagdialog.cpp:859
 #, qt-format
 msgid "Manually set cover art from %1"
 msgstr ""
@@ -3061,7 +3053,7 @@ msgstr ""
 msgid "Match one or more search terms (OR)"
 msgstr ""
 
-#: ../build/src/ui_appearancesettingspage.h:616
+#: ../build/src/ui_appearancesettingspage.h:542
 msgid "Max cover size"
 msgstr ""
 
@@ -3069,7 +3061,7 @@ msgstr ""
 msgid "Maximum bitrate"
 msgstr "Maximale bitrate"
 
-#: qobuz/qobuzservice.cpp:493
+#: qobuz/qobuzservice.cpp:495
 msgid "Maximum number of login attempts reached."
 msgstr ""
 
@@ -3082,7 +3074,7 @@ msgstr "Gemiddeld (%1 fps)"
 msgid "Metadata"
 msgstr ""
 
-#: ../build/src/ui_appearancesettingspage.h:612
+#: ../build/src/ui_appearancesettingspage.h:538
 msgid "Middle"
 msgstr ""
 
@@ -3094,21 +3086,21 @@ msgstr "Minimale bitrate"
 msgid "Missing API token."
 msgstr ""
 
-#: qobuz/qobuzservice.cpp:755 qobuz/qobuzstreamurlrequest.cpp:81
+#: qobuz/qobuzservice.cpp:738 qobuz/qobuzstreamurlrequest.cpp:81
 msgid "Missing Qobuz app ID or secret."
 msgstr ""
 
-#: qobuz/qobuzservice.cpp:497 qobuz/qobuzservice.cpp:526
-#: qobuz/qobuzservice.cpp:582 qobuz/qobuzservice.cpp:638
-#: qobuz/qobuzservice.cpp:706
+#: qobuz/qobuzservice.cpp:499 qobuz/qobuzservice.cpp:528
+#: qobuz/qobuzservice.cpp:578 qobuz/qobuzservice.cpp:628
+#: qobuz/qobuzservice.cpp:690
 msgid "Missing Qobuz app ID."
 msgstr ""
 
-#: qobuz/qobuzservice.cpp:505
+#: qobuz/qobuzservice.cpp:507
 msgid "Missing Qobuz password."
 msgstr ""
 
-#: qobuz/qobuzservice.cpp:501
+#: qobuz/qobuzservice.cpp:503
 msgid "Missing Qobuz username."
 msgstr ""
 
@@ -3116,13 +3108,13 @@ msgstr ""
 msgid "Missing Subsonic username or password."
 msgstr ""
 
-#: tidal/tidalservice.cpp:745 tidal/tidalservice.cpp:806
-#: tidal/tidalservice.cpp:867 tidal/tidalservice.cpp:936
-#: tidal/tidalservice.cpp:1000 tidal/tidalstreamurlrequest.cpp:86
+#: tidal/tidalservice.cpp:748 tidal/tidalservice.cpp:803
+#: tidal/tidalservice.cpp:858 tidal/tidalservice.cpp:921
+#: tidal/tidalservice.cpp:984 tidal/tidalstreamurlrequest.cpp:86
 msgid "Missing Tidal API token, username or password."
 msgstr ""
 
-#: tidal/tidalservice.cpp:706
+#: tidal/tidalservice.cpp:709
 msgid "Missing Tidal API token."
 msgstr ""
 
@@ -3130,11 +3122,11 @@ msgstr ""
 msgid "Missing Tidal client ID."
 msgstr ""
 
-#: tidal/tidalservice.cpp:714
+#: tidal/tidalservice.cpp:717
 msgid "Missing Tidal password."
 msgstr ""
 
-#: tidal/tidalservice.cpp:710
+#: tidal/tidalservice.cpp:713
 msgid "Missing Tidal username."
 msgstr ""
 
@@ -3191,7 +3183,7 @@ msgstr ""
 msgid "Most played"
 msgstr ""
 
-#: device/giolister.cpp:192
+#: device/giolister.cpp:191
 msgid "Mount point"
 msgstr "Koppelpunt"
 
@@ -3204,7 +3196,7 @@ msgstr "Koppelpunten"
 msgid "Move down"
 msgstr "Omlaag verplaatsen"
 
-#: core/mainwindow.cpp:753 widgets/fileviewlist.cpp:47
+#: core/mainwindow.cpp:754 widgets/fileviewlist.cpp:47
 msgid "Move to collection..."
 msgstr "Naar bibliotheek verplaatsen…"
 
@@ -3213,7 +3205,7 @@ msgstr "Naar bibliotheek verplaatsen…"
 msgid "Move up"
 msgstr "Omhoog verplaatsen"
 
-#: core/mainwindow.cpp:2205 transcoder/transcodedialog.cpp:333
+#: core/mainwindow.cpp:2202 transcoder/transcodedialog.cpp:333
 msgid "Music"
 msgstr "Muziek"
 
@@ -3239,7 +3231,7 @@ msgstr "Langzaam internet"
 msgid "Network Proxy"
 msgstr "Netwerk Proxy"
 
-#: playlist/playlistdelegates.cpp:345 dialogs/edittagdialog.cpp:840
+#: playlist/playlistdelegates.cpp:346 dialogs/edittagdialog.cpp:887
 msgid "Never"
 msgstr "Nooit"
 
@@ -3257,7 +3249,7 @@ msgstr "Nooit afspelen"
 msgid "New folder"
 msgstr "Nieuwe map"
 
-#: core/mainwindow.cpp:2023
+#: core/mainwindow.cpp:2020
 msgid "New playlist"
 msgstr "Nieuwe afspeellijst"
 
@@ -3281,7 +3273,7 @@ msgstr ""
 msgid "Newest tracks"
 msgstr ""
 
-#: dialogs/edittagdialog.cpp:221 dialogs/trackselectiondialog.cpp:70
+#: dialogs/edittagdialog.cpp:223 dialogs/trackselectiondialog.cpp:70
 msgid "Next"
 msgstr "Volgende"
 
@@ -3289,7 +3281,7 @@ msgstr "Volgende"
 msgid "Next track"
 msgstr ""
 
-#: core/utilities.cpp:180
+#: utilities/timeutils.cpp:102
 msgid "Next week"
 msgstr "Volgende week"
 
@@ -3297,7 +3289,7 @@ msgstr "Volgende week"
 msgid "No analyzer"
 msgstr "Geen weergave"
 
-#: covermanager/albumcovermanager.cpp:1039
+#: covermanager/albumcovermanager.cpp:1041
 msgid "No covers to export."
 msgstr "Geen albumhoezen om te exporteren."
 
@@ -3305,7 +3297,7 @@ msgstr "Geen albumhoezen om te exporteren."
 msgid "No long blocks"
 msgstr "Geen lange blokken"
 
-#: tidal/tidalrequest.cpp:1260 qobuz/qobuzrequest.cpp:1314
+#: tidal/tidalrequest.cpp:1352 qobuz/qobuzrequest.cpp:1414
 msgid "No match."
 msgstr ""
 
@@ -3324,17 +3316,17 @@ msgstr ""
 msgid "No short blocks"
 msgstr "Geen korte blokken"
 
-#: context/contextview.cpp:438
+#: context/contextview.cpp:439
 msgid "No song playing"
 msgstr ""
 
-#: collection/savedgroupingmanager.cpp:88 dialogs/edittagdialog.cpp:762
-#: dialogs/edittagdialog.cpp:772 ../build/src/ui_groupbydialog.h:190
+#: collection/savedgroupingmanager.cpp:88 dialogs/edittagdialog.cpp:809
+#: dialogs/edittagdialog.cpp:819 ../build/src/ui_groupbydialog.h:190
 #: ../build/src/ui_groupbydialog.h:212 ../build/src/ui_groupbydialog.h:234
 msgid "None"
 msgstr "Geen"
 
-#: core/mainwindow.cpp:2600 core/mainwindow.cpp:2751
+#: core/mainwindow.cpp:2597 core/mainwindow.cpp:2748
 #: collection/collectionview.cpp:586
 msgid "None of the selected songs were suitable for copying to a device"
 msgstr ""
@@ -3349,19 +3341,19 @@ msgstr ""
 msgid "Normal block type"
 msgstr "Normaal blok type"
 
-#: qobuz/qobuzservice.cpp:531 qobuz/qobuzservice.cpp:587
-#: qobuz/qobuzservice.cpp:643
+#: qobuz/qobuzservice.cpp:533 qobuz/qobuzservice.cpp:583
+#: qobuz/qobuzservice.cpp:633
 msgid "Not authenticated with Qobuz."
 msgstr ""
 
-#: tidal/tidalservice.cpp:718
+#: tidal/tidalservice.cpp:721
 msgid ""
 "Not authenticated with Tidal and reached maximum number of login attempts."
 msgstr ""
 
-#: tidal/tidalservice.cpp:740 tidal/tidalservice.cpp:801
-#: tidal/tidalservice.cpp:862 tidal/tidalservice.cpp:931
-#: tidal/tidalservice.cpp:996 tidal/tidalstreamurlrequest.cpp:82
+#: tidal/tidalservice.cpp:743 tidal/tidalservice.cpp:798
+#: tidal/tidalservice.cpp:853 tidal/tidalservice.cpp:916
+#: tidal/tidalservice.cpp:980 tidal/tidalstreamurlrequest.cpp:82
 msgid "Not authenticated with Tidal."
 msgstr ""
 
@@ -3416,7 +3408,7 @@ msgstr ""
 msgid "Only show the first"
 msgstr ""
 
-#: ../build/src/ui_appearancesettingspage.h:622
+#: ../build/src/ui_appearancesettingspage.h:548
 msgid "Opacity"
 msgstr "Doorzichtigheid"
 
@@ -3478,7 +3470,7 @@ msgstr "Opus"
 msgid "Organize Files"
 msgstr ""
 
-#: core/mainwindow.cpp:751 collection/collectionview.cpp:357
+#: core/mainwindow.cpp:752 collection/collectionview.cpp:357
 msgid "Organize files..."
 msgstr ""
 
@@ -3558,7 +3550,7 @@ msgstr "Party"
 msgid "Password"
 msgstr "Wachtwoord"
 
-#: ../build/src/ui_edittagdialog.h:807
+#: ../build/src/ui_edittagdialog.h:833
 msgid "Path"
 msgstr ""
 
@@ -3566,7 +3558,7 @@ msgstr ""
 msgid "Pattern"
 msgstr ""
 
-#: core/mainwindow.cpp:1321 core/mainwindow.cpp:1820
+#: core/mainwindow.cpp:1318 core/mainwindow.cpp:1817
 #: core/qtsystemtrayicon.cpp:144 globalshortcuts/globalshortcutsmanager.cpp:62
 msgid "Pause"
 msgstr "Pauze"
@@ -3582,7 +3574,7 @@ msgstr "Gepauzeerd"
 #: collection/savedgroupingmanager.cpp:130 playlist/playlist.cpp:1344
 #: organize/organizedialog.cpp:107 ../build/src/ui_groupbydialog.h:204
 #: ../build/src/ui_groupbydialog.h:226 ../build/src/ui_groupbydialog.h:248
-#: ../build/src/ui_edittagdialog.h:830
+#: ../build/src/ui_edittagdialog.h:856
 msgid "Performer"
 msgstr "Uitvoerend artiest"
 
@@ -3594,17 +3586,17 @@ msgstr "Pixel"
 msgid "Plain sidebar"
 msgstr "Normale zijbalk"
 
-#: core/mainwindow.cpp:720 core/mainwindow.cpp:1278 core/mainwindow.cpp:1305
-#: core/mainwindow.cpp:1824 core/qtsystemtrayicon.cpp:157
+#: core/mainwindow.cpp:721 core/mainwindow.cpp:1275 core/mainwindow.cpp:1302
+#: core/mainwindow.cpp:1821 core/qtsystemtrayicon.cpp:157
 #: core/qtsystemtrayicon.cpp:171 globalshortcuts/globalshortcutsmanager.cpp:61
 msgid "Play"
 msgstr "Afspelen"
 
-#: ../build/src/ui_appearancesettingspage.h:627
+#: ../build/src/ui_appearancesettingspage.h:553
 msgid "Play control buttons"
 msgstr ""
 
-#: playlist/playlist.cpp:1347 ../build/src/ui_edittagdialog.h:805
+#: playlist/playlist.cpp:1347 ../build/src/ui_edittagdialog.h:831
 msgid "Play count"
 msgstr "Aantal maal afgespeeld"
 
@@ -3658,7 +3650,7 @@ msgstr "Speler-opties"
 msgid "Playlist"
 msgstr "Afspeellijst"
 
-#: ../build/src/ui_appearancesettingspage.h:625
+#: ../build/src/ui_appearancesettingspage.h:551
 msgid "Playlist buttons"
 msgstr ""
 
@@ -3666,7 +3658,7 @@ msgstr ""
 msgid "Playlist finished"
 msgstr "Afspeellijst voltooid"
 
-#: core/mainwindow.cpp:2296
+#: core/mainwindow.cpp:2293
 #, qt-format
 msgid ""
 "Playlist has %1 songs, too large to undo, are you sure you want to clear the "
@@ -3682,7 +3674,7 @@ msgstr ""
 msgid "Playlist options"
 msgstr "Afspeellijst-opties"
 
-#: ../build/src/ui_appearancesettingspage.h:631
+#: ../build/src/ui_appearancesettingspage.h:557
 msgid "Playlist playing song color"
 msgstr ""
 
@@ -3690,7 +3682,7 @@ msgstr ""
 msgid "Playlist type"
 msgstr ""
 
-#: core/mainwindow.cpp:369
+#: core/mainwindow.cpp:370
 msgid "Playlists"
 msgstr ""
 
@@ -3699,7 +3691,7 @@ msgid "Please close your browser and return to Strawberry."
 msgstr "Sluit uw browser en keer terug naar Strawberry."
 
 #: covermanager/spotifycoverprovider.cpp:149
-#: lyrics/geniuslyricsprovider.cpp:124 scrobbler/listenbrainzscrobbler.cpp:190
+#: lyrics/geniuslyricsprovider.cpp:125 scrobbler/listenbrainzscrobbler.cpp:190
 msgid "Please open this URL in your browser"
 msgstr ""
 
@@ -3715,7 +3707,7 @@ msgstr "Pop-up duur"
 msgid "Port"
 msgstr "Poort"
 
-#: ../build/src/ui_appearancesettingspage.h:609
+#: ../build/src/ui_appearancesettingspage.h:535
 msgid "Position"
 msgstr "Positie"
 
@@ -3742,7 +3734,7 @@ msgstr ""
 msgid "Preferred format"
 msgstr "Voorkeursformaat"
 
-#: collection/collectionfilterwidget.cpp:78
+#: collection/collectionfilterwidget.cpp:79
 msgid ""
 "Prefix a word with a field name to limit the search to that field, e.g.:"
 msgstr ""
@@ -3789,7 +3781,7 @@ msgstr "Opties mooi infoschermvenster"
 msgid "Preview"
 msgstr "Voorbeeld"
 
-#: dialogs/edittagdialog.cpp:220 dialogs/trackselectiondialog.cpp:69
+#: dialogs/edittagdialog.cpp:222 dialogs/trackselectiondialog.cpp:69
 msgid "Previous"
 msgstr "Vorige"
 
@@ -3814,7 +3806,7 @@ msgstr "Voortgang"
 msgid "Put songs in a random order"
 msgstr "Zet nummers in willekeurige volgorde"
 
-#: core/mainwindow.cpp:383 ../build/src/ui_scrobblersettingspage.h:423
+#: core/mainwindow.cpp:384 ../build/src/ui_scrobblersettingspage.h:423
 #: ../build/src/ui_qobuzsettingspage.h:276
 msgid "Qobuz"
 msgstr "Qobuz"
@@ -3837,25 +3829,25 @@ msgstr "Kwaliteit"
 msgid "Querying device..."
 msgstr "apparaat afzoeken..."
 
-#: core/mainwindow.cpp:368
+#: core/mainwindow.cpp:369
 msgid "Queue"
 msgstr "Rij"
 
-#: core/mainwindow.cpp:1924
+#: core/mainwindow.cpp:1921
 msgid "Queue selected tracks"
 msgstr "Geselecteerde nummers in de wachtrij plaatsen"
 
-#: core/mainwindow.cpp:726 core/mainwindow.cpp:1928
+#: core/mainwindow.cpp:727 core/mainwindow.cpp:1925
 msgid "Queue selected tracks to play next"
 msgstr ""
 "Geselecteerde nummers in de wachtrij zetten om op volgorde af te spelen"
 
-#: core/mainwindow.cpp:1931 collection/collectionview.cpp:354
+#: core/mainwindow.cpp:1928 collection/collectionview.cpp:354
 #: internet/internetcollectionview.cpp:320
 msgid "Queue to play next"
 msgstr ""
 
-#: core/mainwindow.cpp:1923 collection/collectionview.cpp:353
+#: core/mainwindow.cpp:1920 collection/collectionview.cpp:353
 #: smartplaylists/smartplaylistsviewcontainer.cpp:72
 #: internet/internetsearchview.cpp:323 internet/internetcollectionview.cpp:319
 msgid "Queue track"
@@ -3873,7 +3865,7 @@ msgstr "Radio (gelijk volume voor alle nummers)"
 msgid "Radio Paradise"
 msgstr "Radio Paradise"
 
-#: core/mainwindow.cpp:372
+#: core/mainwindow.cpp:373
 msgid "Radios"
 msgstr "Radio's"
 
@@ -3881,7 +3873,7 @@ msgstr "Radio's"
 msgid "Random"
 msgstr "Willekeurig"
 
-#: playlist/playlist.cpp:1365 ../build/src/ui_edittagdialog.h:833
+#: playlist/playlist.cpp:1365 ../build/src/ui_edittagdialog.h:859
 msgid "Rating"
 msgstr "Beoordeling"
 
@@ -3889,7 +3881,7 @@ msgstr "Beoordeling"
 msgid "Re&lative"
 msgstr ""
 
-#: covermanager/albumcovermanager.cpp:260
+#: covermanager/albumcovermanager.cpp:262
 msgid "Really cancel?"
 msgstr "Werkelijk annuleren?"
 
@@ -3907,7 +3899,7 @@ msgid ""
 msgstr ""
 
 #: covermanager/spotifycoverprovider.cpp:198
-#: lyrics/geniuslyricsprovider.cpp:152 scrobbler/listenbrainzscrobbler.cpp:216
+#: lyrics/geniuslyricsprovider.cpp:153 scrobbler/listenbrainzscrobbler.cpp:216
 msgid "Received invalid reply from web browser."
 msgstr "Ongeldig antwoord ontvangen van webbrowser."
 
@@ -3918,6 +3910,34 @@ msgid ""
 msgstr ""
 "Ongeldig antwoord ontvangen van webbrowser. Probeer de HTTPS-optie of "
 "gebruik een andere browser zoals Chromium of Chrome."
+
+#: tidal/tidalrequest.cpp:1185 qobuz/qobuzrequest.cpp:1247
+#, qt-format
+msgid "Receiving album cover for %1 album..."
+msgstr ""
+
+#: tidal/tidalrequest.cpp:1186 qobuz/qobuzrequest.cpp:1248
+#, qt-format
+msgid "Receiving album covers for %1 albums..."
+msgstr ""
+
+#: tidal/tidalrequest.cpp:544 qobuz/qobuzrequest.cpp:546
+#, qt-format
+msgid "Receiving albums for %1 artist..."
+msgstr ""
+
+#: tidal/tidalrequest.cpp:545 qobuz/qobuzrequest.cpp:547
+#, qt-format
+msgid "Receiving albums for %1 artists..."
+msgstr ""
+
+#: tidal/tidalrequest.cpp:269 qobuz/qobuzrequest.cpp:249
+msgid "Receiving albums..."
+msgstr ""
+
+#: tidal/tidalrequest.cpp:221 qobuz/qobuzrequest.cpp:197
+msgid "Receiving artists..."
+msgstr ""
 
 #: dialogs/lastfmimportdialog.cpp:74
 msgid "Receiving initial data from last.fm..."
@@ -3938,7 +3958,21 @@ msgstr ""
 msgid "Receiving playcounts for %1 songs."
 msgstr ""
 
-#: lyrics/geniuslyricsprovider.cpp:200
+#: tidal/tidalrequest.cpp:814 qobuz/qobuzrequest.cpp:803
+#, qt-format
+msgid "Receiving songs for %1 album..."
+msgstr ""
+
+#: tidal/tidalrequest.cpp:815 qobuz/qobuzrequest.cpp:804
+#, qt-format
+msgid "Receiving songs for %1 albums..."
+msgstr ""
+
+#: tidal/tidalrequest.cpp:317 qobuz/qobuzrequest.cpp:301
+msgid "Receiving songs..."
+msgstr ""
+
+#: lyrics/geniuslyricsprovider.cpp:201
 msgid "Redirect from Genius is missing query items code or state."
 msgstr ""
 
@@ -3946,7 +3980,7 @@ msgstr ""
 msgid "Redirect missing token code or state!"
 msgstr ""
 
-#: lyrics/geniuslyricsprovider.cpp:148 scrobbler/listenbrainzscrobbler.cpp:212
+#: lyrics/geniuslyricsprovider.cpp:149 scrobbler/listenbrainzscrobbler.cpp:212
 msgid "Redirect missing token code!"
 msgstr ""
 
@@ -4071,7 +4105,7 @@ msgstr "Replay Gain"
 msgid "Replay Gain mode"
 msgstr "Replay Gain modus"
 
-#: tidal/tidalservice.cpp:371
+#: tidal/tidalservice.cpp:374
 msgid "Reply from Tidal is missing query items."
 msgstr ""
 
@@ -4083,7 +4117,7 @@ msgstr ""
 msgid "Rescan song(s)"
 msgstr "Nummer(s) opnieuw scannen"
 
-#: core/mainwindow.cpp:742
+#: core/mainwindow.cpp:743
 msgid "Rescan song(s)..."
 msgstr "Nummer(s) opnieuw scannen..."
 
@@ -4091,7 +4125,7 @@ msgstr "Nummer(s) opnieuw scannen..."
 msgid "Reset"
 msgstr "Herstel"
 
-#: dialogs/edittagdialog.cpp:1251 ../build/src/ui_edittagdialog.h:814
+#: dialogs/edittagdialog.cpp:1298 ../build/src/ui_edittagdialog.h:840
 msgid "Reset play counts"
 msgstr "Reset afspeelstatistieken"
 
@@ -4122,52 +4156,29 @@ msgstr "Beperken tot tekens toegestaan ​​op FAT-bestandssystemen"
 msgid "Resume playback on start"
 msgstr "Afspelen hervatten bij opstarten"
 
-#: subsonic/subsonicrequest.cpp:689 tidal/tidalrequest.cpp:1091
-#: qobuz/qobuzrequest.cpp:1146
+#: subsonic/subsonicrequest.cpp:689
 #, qt-format
 msgid "Retrieving album cover for %1 album..."
 msgstr "Albumhoes ophalen voor %1 album..."
 
-#: subsonic/subsonicrequest.cpp:690 tidal/tidalrequest.cpp:1092
-#: qobuz/qobuzrequest.cpp:1147
+#: subsonic/subsonicrequest.cpp:690
 #, qt-format
 msgid "Retrieving album covers for %1 albums..."
 msgstr "Albumhoezen ophalen voor %1 album..."
 
-#: tidal/tidalrequest.cpp:462 qobuz/qobuzrequest.cpp:464
-#, qt-format
-msgid "Retrieving albums for %1 artist..."
-msgstr "Albums ophalen voor %1 artiest..."
-
-#: tidal/tidalrequest.cpp:463 qobuz/qobuzrequest.cpp:465
-#, qt-format
-msgid "Retrieving albums for %1 artists..."
-msgstr "Albums ophalen voor %1 artiesten..."
-
-#: subsonic/subsonicrequest.cpp:124 tidal/tidalrequest.cpp:198
-#: qobuz/qobuzrequest.cpp:178
+#: subsonic/subsonicrequest.cpp:124
 msgid "Retrieving albums..."
 msgstr "Albums ophalen..."
 
-#: tidal/tidalrequest.cpp:154 qobuz/qobuzrequest.cpp:130
-msgid "Retrieving artists..."
-msgstr "Artiesten ophalen..."
-
-#: subsonic/subsonicrequest.cpp:313 tidal/tidalrequest.cpp:731
-#: qobuz/qobuzrequest.cpp:716
+#: subsonic/subsonicrequest.cpp:313
 #, qt-format
 msgid "Retrieving songs for %1 album..."
 msgstr "Nummers ophalen voor %1 album..."
 
-#: subsonic/subsonicrequest.cpp:314 tidal/tidalrequest.cpp:732
-#: qobuz/qobuzrequest.cpp:717
+#: subsonic/subsonicrequest.cpp:314
 #, qt-format
 msgid "Retrieving songs for %1 albums..."
 msgstr "Liedjes ophalen voor %1 albums..."
-
-#: tidal/tidalrequest.cpp:242 qobuz/qobuzrequest.cpp:226
-msgid "Retrieving songs..."
-msgstr "Liedjes ophalen..."
 
 #: ../data/html/oauthsuccess.html:5
 msgid "Return to Strawberry"
@@ -4204,11 +4215,11 @@ msgstr "Apparaat veilig verwijderen na het kopiëren"
 #: collection/savedgroupingmanager.cpp:142 playlist/playlist.cpp:1351
 #: organize/organizedialog.cpp:117 ../build/src/ui_groupbydialog.h:207
 #: ../build/src/ui_groupbydialog.h:229 ../build/src/ui_groupbydialog.h:251
-#: ../build/src/ui_edittagdialog.h:808
+#: ../build/src/ui_edittagdialog.h:834
 msgid "Sample rate"
 msgstr "Samplerate"
 
-#: context/contextview.cpp:209
+#: context/contextview.cpp:210
 msgid "Samplerate"
 msgstr "Samplerate"
 
@@ -4216,7 +4227,7 @@ msgstr "Samplerate"
 msgid "Save &playlist..."
 msgstr ""
 
-#: covermanager/albumcoverchoicecontroller.cpp:245
+#: covermanager/albumcoverchoicecontroller.cpp:247
 msgid "Save album cover"
 msgstr "Albumhoes opslaan"
 
@@ -4232,7 +4243,7 @@ msgstr ""
 msgid "Save album covers in cache directory"
 msgstr ""
 
-#: covermanager/albumcoverchoicecontroller.cpp:107
+#: covermanager/albumcoverchoicecontroller.cpp:109
 msgid "Save cover to disk..."
 msgstr "Albumhoes op schijf bewaren…"
 
@@ -4286,7 +4297,7 @@ msgstr "Album hoezen weg schrijven"
 msgid "Saving playcounts and ratings"
 msgstr ""
 
-#: dialogs/edittagdialog.cpp:303 dialogs/trackselectiondialog.cpp:289
+#: dialogs/edittagdialog.cpp:305 dialogs/trackselectiondialog.cpp:289
 msgid "Saving tracks"
 msgstr "Nummers opslaan"
 
@@ -4302,7 +4313,7 @@ msgstr "Groote schalen"
 msgid "Scrobbler"
 msgstr "Scrobbler"
 
-#: scrobbler/scrobblingapi20.cpp:1017
+#: scrobbler/scrobblingapi20.cpp:1019
 #, qt-format
 msgid "Scrobbler %1 error: %2"
 msgstr "Scrobbler %1 error: %2"
@@ -4312,14 +4323,14 @@ msgstr "Scrobbler %1 error: %2"
 msgid "Scrobbler %1 is not authenticated!"
 msgstr "Scrobbler %1 is niet geverifieerd!"
 
-#: covermanager/albumcoversearcher.cpp:202
-#: covermanager/albumcoversearcher.cpp:220
+#: covermanager/albumcoversearcher.cpp:204
+#: covermanager/albumcoversearcher.cpp:222
 #: ../build/src/ui_albumcoversearcher.h:110
 #: ../build/src/ui_internettabsview.h:116
 msgid "Search"
 msgstr "Zoeken"
 
-#: covermanager/albumcoverchoicecontroller.cpp:117
+#: covermanager/albumcoverchoicecontroller.cpp:119
 msgid "Search automatically"
 msgstr "Automatisch zoeken"
 
@@ -4328,7 +4339,7 @@ msgstr "Automatisch zoeken"
 msgid "Search delay"
 msgstr "Zoek vertraging"
 
-#: covermanager/albumcoverchoicecontroller.cpp:109
+#: covermanager/albumcoverchoicecontroller.cpp:111
 msgid "Search for album covers..."
 msgstr "Naar albumhoezen zoeken…"
 
@@ -4349,9 +4360,9 @@ msgstr "zoek opties"
 msgid "Search terms"
 msgstr "Zoektermen"
 
-#: tidal/tidalrequest.cpp:286 tidal/tidalrequest.cpp:300
-#: tidal/tidalrequest.cpp:314 qobuz/qobuzrequest.cpp:274
-#: qobuz/qobuzrequest.cpp:288 qobuz/qobuzrequest.cpp:302
+#: tidal/tidalrequest.cpp:365 tidal/tidalrequest.cpp:379
+#: tidal/tidalrequest.cpp:393 qobuz/qobuzrequest.cpp:353
+#: qobuz/qobuzrequest.cpp:367 qobuz/qobuzrequest.cpp:381
 msgid "Searching..."
 msgstr "Zoeken..."
 
@@ -4383,11 +4394,7 @@ msgstr "Spoel het momenteel spelende nummer naar een absolute positie door"
 msgid "Seeking using a keyboard shortcut or mouse wheel"
 msgstr "Zoeken met behulp van een toetsenbordsnelkoppeling of muiswiel"
 
-#: ../build/src/ui_appearancesettingspage.h:591
-msgid "Select background color:"
-msgstr "Selecteer achtergrond kleur"
-
-#: settings/appearancesettingspage.cpp:402
+#: settings/appearancesettingspage.cpp:301
 msgid "Select background image"
 msgstr "Kies achtergrondafbeelding"
 
@@ -4403,15 +4410,11 @@ msgstr ""
 msgid "Select directory for the playlists"
 msgstr ""
 
-#: ../build/src/ui_appearancesettingspage.h:589
-msgid "Select foreground color:"
-msgstr "Selecteer voorgrond kleur"
-
-#: ../build/src/ui_appearancesettingspage.h:634
+#: ../build/src/ui_appearancesettingspage.h:560
 msgid "Select playlist playing song color:"
 msgstr ""
 
-#: ../build/src/ui_appearancesettingspage.h:597
+#: ../build/src/ui_appearancesettingspage.h:523
 msgid "Select tabbar color:"
 msgstr ""
 
@@ -4439,7 +4442,7 @@ msgstr "Server-URL is ongeldig."
 msgid "Server-side scrobbling"
 msgstr "Server-side scrobbling"
 
-#: core/mainwindow.cpp:1964
+#: core/mainwindow.cpp:1961
 #, qt-format
 msgid "Set %1 to \"%2\"..."
 msgstr "Stel %1 in op \"%2\"..."
@@ -4456,7 +4459,7 @@ msgstr "Waarde voor alle geselecteerde nummers instellen…"
 msgid "Settings"
 msgstr "Instellingen"
 
-#: ../build/src/ui_appearancesettingspage.h:585
+#: ../build/src/ui_appearancesettingspage.h:518
 msgid "Settings require restart."
 msgstr "Instellingen vereisen opnieuw opstarten."
 
@@ -4470,7 +4473,7 @@ msgstr "Sneltoets"
 msgid "Shortcut for %1"
 msgstr "Sneltoets voor %1"
 
-#: collection/collectionfilterwidget.cpp:113
+#: collection/collectionfilterwidget.cpp:114
 msgid "Show"
 msgstr "Weergeven"
 
@@ -4518,7 +4521,7 @@ msgstr "Mooi infoschermvenster weergeven"
 msgid "Show above status bar"
 msgstr "Boven statusbalk weergeven"
 
-#: context/contextview.cpp:297
+#: context/contextview.cpp:298
 msgid "Show album cover"
 msgstr "Toon albumhoes"
 
@@ -4526,7 +4529,7 @@ msgstr "Toon albumhoes"
 msgid "Show album cover art in collection"
 msgstr "Toon albumhoezen in collectie"
 
-#: core/mainwindow.cpp:668
+#: core/mainwindow.cpp:669
 msgid "Show all songs"
 msgstr "Alle nummers weergeven"
 
@@ -4546,23 +4549,23 @@ msgstr "Toon dialoogvenster voor fouten"
 msgid "Show dividers"
 msgstr "Verdelers tonen"
 
-#: context/contextview.cpp:305
+#: context/contextview.cpp:306
 msgid "Show engine and device"
 msgstr ""
 
-#: covermanager/albumcoverchoicecontroller.cpp:115
+#: covermanager/albumcoverchoicecontroller.cpp:117
 msgid "Show fullsize..."
 msgstr "Volledig weergeven..."
 
-#: core/mainwindow.cpp:749
+#: core/mainwindow.cpp:750
 msgid "Show in collection..."
 msgstr "Tonen in bibliotheek..."
 
-#: core/utilities.cpp:449 core/utilities.cpp:455
+#: utilities/filemanagerutils.cpp:135 utilities/filemanagerutils.cpp:141
 msgid "Show in file browser"
 msgstr "In bestandsbeheer tonen"
 
-#: core/mainwindow.cpp:750 collection/collectionview.cpp:366
+#: core/mainwindow.cpp:751 collection/collectionview.cpp:366
 #: widgets/fileviewlist.cpp:53
 msgid "Show in file browser..."
 msgstr "In bestandsbeheer tonen…"
@@ -4579,11 +4582,11 @@ msgstr ""
 msgid "Show moodbar"
 msgstr "Toon moodbar"
 
-#: core/mainwindow.cpp:669
+#: core/mainwindow.cpp:670
 msgid "Show only duplicates"
 msgstr "Alleen dubbelen tonen"
 
-#: core/mainwindow.cpp:670
+#: core/mainwindow.cpp:671
 msgid "Show only untagged"
 msgstr "Nummers zonder labels tonen"
 
@@ -4599,7 +4602,7 @@ msgstr "Toon scrobble-knop"
 msgid "Show sidebar"
 msgstr "Toon zijbalk"
 
-#: context/contextview.cpp:309
+#: context/contextview.cpp:310
 msgid "Show song lyrics"
 msgstr "Songteksten weergeven"
 
@@ -4607,7 +4610,7 @@ msgstr "Songteksten weergeven"
 msgid "Show song progress on system tray icon"
 msgstr ""
 
-#: context/contextview.cpp:301
+#: context/contextview.cpp:302
 msgid "Show song technical data"
 msgstr "Technische gegevens lied weergeven"
 
@@ -4672,7 +4675,7 @@ msgstr "Ska"
 msgid "Skip backwards in playlist"
 msgstr "Terug in afspeellijst"
 
-#: playlist/playlist.cpp:1348 ../build/src/ui_edittagdialog.h:803
+#: playlist/playlist.cpp:1348 ../build/src/ui_edittagdialog.h:829
 msgid "Skip count"
 msgstr "Aantal maal overgeslagen"
 
@@ -4680,11 +4683,11 @@ msgstr "Aantal maal overgeslagen"
 msgid "Skip forwards in playlist"
 msgstr "Vooruit in afspeellijst"
 
-#: core/mainwindow.cpp:1937
+#: core/mainwindow.cpp:1934
 msgid "Skip selected tracks"
 msgstr "Geselecteerde nummers overslaan"
 
-#: core/mainwindow.cpp:1936
+#: core/mainwindow.cpp:1933
 msgid "Skip track"
 msgstr "Nummer overslaan"
 
@@ -4700,7 +4703,7 @@ msgstr "Kleine zijbalk"
 msgid "Smart playlist"
 msgstr "Slimme afspeellijst"
 
-#: core/mainwindow.cpp:370
+#: core/mainwindow.cpp:371
 msgid "Smart playlists"
 msgstr "Slimme afspeellijsten"
 
@@ -4801,7 +4804,7 @@ msgstr "Na ieder nummer stoppen"
 msgid "Stop after every track"
 msgstr "Na ieder nummer stoppen"
 
-#: core/mainwindow.cpp:722 ../build/src/ui_mainwindow.h:630
+#: core/mainwindow.cpp:723 ../build/src/ui_mainwindow.h:630
 msgid "Stop after this track"
 msgstr "Na dit nummer stoppen"
 
@@ -4894,16 +4897,16 @@ msgstr "Stream"
 msgid "Stream URL method"
 msgstr "Stream URL-methode"
 
-#: settings/settingsdialog.cpp:159
+#: settings/settingsdialog.cpp:158
 msgid "Streaming"
 msgstr "Streamen"
 
-#: ../build/src/ui_appearancesettingspage.h:617
+#: ../build/src/ui_appearancesettingspage.h:543
 msgid "Stretch image to fill playlist"
 msgstr "Rek de afbeelding uit om de afspeellijst te vullen"
 
-#: ../build/src/ui_appearancesettingspage.h:582
-#: ../build/src/ui_appearancesettingspage.h:583
+#: ../build/src/ui_appearancesettingspage.h:515
+#: ../build/src/ui_appearancesettingspage.h:516
 msgid "Style"
 msgstr "Stijl"
 
@@ -4911,7 +4914,7 @@ msgstr "Stijl"
 msgid "Submit scrobbles every"
 msgstr "Dien scrobble in elke"
 
-#: core/mainwindow.cpp:377 ../build/src/ui_scrobblersettingspage.h:419
+#: core/mainwindow.cpp:378 ../build/src/ui_scrobblersettingspage.h:419
 #: ../build/src/ui_subsonicsettingspage.h:243
 msgid "Subsonic"
 msgstr "Subsonic"
@@ -4935,7 +4938,7 @@ msgstr "Gesuggereerde labels"
 
 #: ../build/src/ui_contextsettingspage.h:429
 #: ../build/src/ui_notificationssettingspage.h:495
-#: ../build/src/ui_edittagdialog.h:815
+#: ../build/src/ui_edittagdialog.h:841
 msgid "Summary"
 msgstr "Samenvatting"
 
@@ -4952,19 +4955,19 @@ msgstr "Ondersteunde formaten"
 msgid "System colors"
 msgstr "Systeemkleuren"
 
-#: ../build/src/ui_appearancesettingspage.h:632
+#: ../build/src/ui_appearancesettingspage.h:558
 msgid "System highlight color"
 msgstr ""
 
-#: ../build/src/ui_appearancesettingspage.h:593
+#: ../build/src/ui_appearancesettingspage.h:519
 msgid "Tabbar colors"
 msgstr "Tabbalkkleuren"
 
-#: ../build/src/ui_appearancesettingspage.h:626
+#: ../build/src/ui_appearancesettingspage.h:552
 msgid "Tabbar large mode"
 msgstr "Tabbalk grote modus"
 
-#: ../build/src/ui_appearancesettingspage.h:630
+#: ../build/src/ui_appearancesettingspage.h:556
 msgid "Tabbar small mode"
 msgstr "Tabbalk kleine modus"
 
@@ -4980,7 +4983,7 @@ msgstr "Labels ophalen"
 msgid "Tagreader workers"
 msgstr ""
 
-#: ../build/src/ui_edittagdialog.h:834
+#: ../build/src/ui_edittagdialog.h:860
 msgid "Tags"
 msgstr "Tags"
 
@@ -5026,7 +5029,7 @@ msgstr "Dank aan alle andere medewerkers van Amarok en Clementine."
 msgid "The \"%1\" command could not be started."
 msgstr "Het commando \"%1\" kon niet worden gestart."
 
-#: ../build/src/ui_appearancesettingspage.h:603
+#: ../build/src/ui_appearancesettingspage.h:529
 msgid "The album cover of the currently playing song"
 msgstr "Albumhoes van het momenteel spelende nummer"
 
@@ -5050,7 +5053,7 @@ msgstr "De site die u aanvroeg bestaat niet!"
 msgid "The site you requested is not an image!"
 msgstr "De site die u aanvroeg is geen afbeelding!"
 
-#: core/mainwindow.cpp:2864
+#: core/mainwindow.cpp:2861
 msgid ""
 "The version of Strawberry you've just updated to requires a full collection "
 "rescan because of the new features listed below:"
@@ -5162,7 +5165,7 @@ msgstr "Dit type apparaat wordt niet ondersteund: %1"
 msgid "Thread priority"
 msgstr ""
 
-#: core/mainwindow.cpp:380 ../build/src/ui_scrobblersettingspage.h:421
+#: core/mainwindow.cpp:381 ../build/src/ui_scrobblersettingspage.h:421
 #: ../build/src/ui_tidalsettingspage.h:318
 msgid "Tidal"
 msgstr "Tidal"
@@ -5181,12 +5184,12 @@ msgstr "TIjd stap"
 
 #: playlist/playlist.cpp:1333 organize/organizedialog.cpp:101
 #: ../build/src/ui_contextsettingspage.h:428
-#: ../build/src/ui_edittagdialog.h:824
+#: ../build/src/ui_edittagdialog.h:850
 #: ../build/src/ui_trackselectiondialog.h:209
 msgid "Title"
 msgstr "Titel"
 
-#: core/utilities.cpp:163 core/utilities.cpp:177
+#: utilities/timeutils.cpp:85 utilities/timeutils.cpp:99
 msgid "Today"
 msgstr "Vandaag"
 
@@ -5194,7 +5197,7 @@ msgstr "Vandaag"
 msgid "Toggle Pretty OSD"
 msgstr ""
 
-#: core/mainwindow.cpp:723 core/mainwindow.cpp:1925
+#: core/mainwindow.cpp:724 core/mainwindow.cpp:1922
 msgid "Toggle queue status"
 msgstr "Wachtrijstatus aan/uit"
 
@@ -5202,7 +5205,7 @@ msgstr "Wachtrijstatus aan/uit"
 msgid "Toggle scrobbling"
 msgstr "Zet scrobbling aan/uit"
 
-#: core/mainwindow.cpp:729 core/mainwindow.cpp:1938
+#: core/mainwindow.cpp:730 core/mainwindow.cpp:1935
 msgid "Toggle skip status"
 msgstr "Schakel status overslaan in"
 
@@ -5210,11 +5213,11 @@ msgstr "Schakel status overslaan in"
 msgid "Toggle visibility for the pretty on-screen-display"
 msgstr "Zichtbaarheid voor het mooie infoschermvenster aan/uit"
 
-#: core/utilities.cpp:178
+#: utilities/timeutils.cpp:100
 msgid "Tomorrow"
 msgstr "Morgen"
 
-#: core/utilities.cpp:449
+#: utilities/filemanagerutils.cpp:135
 msgid "Too many songs selected."
 msgstr "Te veel nummers geselecteerd."
 
@@ -5231,7 +5234,7 @@ msgid "Total network requests made"
 msgstr "Totaal aantal netwerk-verzoeken"
 
 #: playlist/playlist.cpp:1336 organize/organizedialog.cpp:109
-#: ../build/src/ui_edittagdialog.h:832
+#: ../build/src/ui_edittagdialog.h:858
 #: ../build/src/ui_trackselectiondialog.h:211
 msgid "Track"
 msgstr "Nummer"
@@ -5265,7 +5268,7 @@ msgstr "Zet uit"
 msgid "Type"
 msgstr ""
 
-#: device/giolister.cpp:194
+#: device/giolister.cpp:193
 msgid "URI"
 msgstr "URI"
 
@@ -5289,17 +5292,17 @@ msgstr ""
 msgid "Uninstall the snap with:"
 msgstr ""
 
-#: core/song.cpp:605 collection/collectionmodel.cpp:476
-#: collection/collectionmodel.cpp:481 collection/collectionmodel.cpp:485
-#: collection/collectionmodel.cpp:489 collection/collectionmodel.cpp:493
-#: collection/collectionmodel.cpp:1642 collection/savedgroupingmanager.cpp:152
-#: playlist/playlistdelegates.cpp:359 playlist/playlistmanager.cpp:549
-#: playlist/playlistmanager.cpp:550 dialogs/edittagdialog.cpp:717
-#: dialogs/edittagdialog.cpp:744 ../build/src/ui_scrobblersettingspage.h:428
+#: core/song.cpp:673 collection/collectionmodel.cpp:478
+#: collection/collectionmodel.cpp:483 collection/collectionmodel.cpp:487
+#: collection/collectionmodel.cpp:491 collection/collectionmodel.cpp:495
+#: collection/collectionmodel.cpp:1649 collection/savedgroupingmanager.cpp:152
+#: playlist/playlistdelegates.cpp:360 playlist/playlistmanager.cpp:549
+#: playlist/playlistmanager.cpp:550 dialogs/edittagdialog.cpp:764
+#: dialogs/edittagdialog.cpp:791 ../build/src/ui_scrobblersettingspage.h:428
 msgid "Unknown"
 msgstr "Onbekend"
 
-#: subsonic/subsonicrequest.cpp:882 qobuz/qobuzrequest.cpp:1320
+#: subsonic/subsonicrequest.cpp:882 qobuz/qobuzrequest.cpp:1420
 msgid "Unknown error"
 msgstr "Onbekende fout"
 
@@ -5311,19 +5314,19 @@ msgstr ""
 msgid "Unknown playlist extension"
 msgstr ""
 
-#: dialogs/edittagdialog.cpp:765
+#: dialogs/edittagdialog.cpp:812
 msgid "Unset"
 msgstr "Uitgeschakeld"
 
-#: covermanager/albumcoverchoicecontroller.cpp:110
+#: covermanager/albumcoverchoicecontroller.cpp:112
 msgid "Unset cover"
 msgstr "Albumhoes wissen"
 
-#: core/mainwindow.cpp:1935
+#: core/mainwindow.cpp:1932
 msgid "Unskip selected tracks"
 msgstr "Geselecteerde nummers niet overslaan"
 
-#: core/mainwindow.cpp:1934
+#: core/mainwindow.cpp:1931
 msgid "Unskip track"
 msgstr "Nummer niet overslaan"
 
@@ -5336,7 +5339,7 @@ msgstr "Bibliotheek bijwerken zodra Strawberry gestart wordt"
 msgid "Updating %1"
 msgstr "%1 bijwerken"
 
-#: collection/collectionbackend.cpp:694
+#: collection/collectionbackend.cpp:695
 #, qt-format
 msgid "Updating %1 database."
 msgstr "%1 database bijwerken."
@@ -5354,11 +5357,11 @@ msgstr "Bibliotheek wordt bijgewerkt"
 msgid "Upmix / downmix to"
 msgstr "Upmix / downmix naar"
 
-#: ../build/src/ui_appearancesettingspage.h:610
+#: ../build/src/ui_appearancesettingspage.h:536
 msgid "Upper Left"
 msgstr "Linksboven"
 
-#: ../build/src/ui_appearancesettingspage.h:611
+#: ../build/src/ui_appearancesettingspage.h:537
 msgid "Upper Right"
 msgstr "Rechtsboven"
 
@@ -5406,10 +5409,6 @@ msgstr "Gebruik Tidal instellingen om te verifiëren."
 msgid "Use X11 shortcuts when available"
 msgstr "Gebruik X11-snelkoppelingen indien beschikbaar"
 
-#: ../build/src/ui_appearancesettingspage.h:588
-msgid "Use a custom color set"
-msgstr "Gebruik een aangepaste kleuren set"
-
 #: ../build/src/ui_notificationssettingspage.h:492
 msgid "Use a custom message for notifications"
 msgstr "Een aangepast bericht voor notificaties gebruiken"
@@ -5426,7 +5425,7 @@ msgstr "Authenticatie gebruiken"
 msgid "Use bitrate management engine"
 msgstr "Bitrate management engine gebruiken"
 
-#: ../build/src/ui_appearancesettingspage.h:595
+#: ../build/src/ui_appearancesettingspage.h:521
 msgid "Use custom color"
 msgstr "Gebruik een aangepaste kleur"
 
@@ -5434,7 +5433,7 @@ msgstr "Gebruik een aangepaste kleur"
 msgid "Use dynamic mode"
 msgstr "Dynamische modus gebruiken"
 
-#: ../build/src/ui_appearancesettingspage.h:596
+#: ../build/src/ui_appearancesettingspage.h:522
 msgid "Use gradient background"
 msgstr "Achtergrond met kleurovergang gebruiken"
 
@@ -5442,7 +5441,7 @@ msgstr "Achtergrond met kleurovergang gebruiken"
 msgid "Use proxy settings for streaming"
 msgstr "Gebruik proxy-instellingen voor streaming"
 
-#: ../build/src/ui_appearancesettingspage.h:584
+#: ../build/src/ui_appearancesettingspage.h:517
 msgid "Use system theme icons"
 msgstr "Gebruik systeem pictogrammen"
 
@@ -5458,7 +5457,7 @@ msgstr "De systeemstandaard gebruiken"
 msgid "Used"
 msgstr "Gebruikt"
 
-#: settings/settingsdialog.cpp:145
+#: settings/settingsdialog.cpp:144
 msgid "User interface"
 msgstr "Gebruikersinterface"
 
@@ -5491,8 +5490,8 @@ msgstr "Het menu gebruiken om een nummer toe te voegen zal…"
 msgid "Variable bit rate"
 msgstr "Variabele bitrate"
 
-#: collection/collectionmodel.cpp:287 collection/collectionmodel.cpp:288
-#: playlist/playlistmanager.cpp:561 covermanager/albumcovermanager.cpp:359
+#: collection/collectionmodel.cpp:289 collection/collectionmodel.cpp:290
+#: playlist/playlistmanager.cpp:561 covermanager/albumcovermanager.cpp:361
 #: internet/internetsearchmodel.cpp:93 internet/internetsearchmodel.cpp:105
 msgid "Various artists"
 msgstr "Diverse artiesten"
@@ -5577,11 +5576,11 @@ msgstr ""
 "Wil je de andere nummers op dit album ook verplaatsen naar Diverse "
 "Artiesten?"
 
-#: core/mainwindow.cpp:2868
+#: core/mainwindow.cpp:2865
 msgid "Would you like to run a full rescan right now?"
 msgstr "Wilt u op dit moment een volledige herscan laten uitvoeren?"
 
-#: settings/collectionsettingspage.cpp:381
+#: settings/collectionsettingspage.cpp:382
 msgid "Write all playcounts and ratings to files"
 msgstr ""
 
@@ -5592,7 +5591,7 @@ msgstr "Schrijf metadata bij het opslaan van afspeellijsten"
 #: collection/savedgroupingmanager.cpp:118 playlist/playlist.cpp:1339
 #: organize/organizedialog.cpp:111 ../build/src/ui_groupbydialog.h:198
 #: ../build/src/ui_groupbydialog.h:220 ../build/src/ui_groupbydialog.h:242
-#: ../build/src/ui_edittagdialog.h:823
+#: ../build/src/ui_edittagdialog.h:849
 #: ../build/src/ui_trackselectiondialog.h:210
 msgid "Year"
 msgstr "Jaar"
@@ -5611,7 +5610,7 @@ msgstr "Jaar - Album - Cd"
 msgid "Years"
 msgstr "Jaren"
 
-#: core/utilities.cpp:164
+#: utilities/timeutils.cpp:86
 msgid "Yesterday"
 msgstr "Gisteren"
 
@@ -5723,7 +5722,7 @@ msgstr "albums"
 msgid "and"
 msgstr "en"
 
-#: collection/collectionfilterwidget.cpp:81
+#: collection/collectionfilterwidget.cpp:82
 msgid "artist"
 msgstr "artiest"
 
@@ -5798,8 +5797,8 @@ msgstr "hardware"
 msgid "in the last"
 msgstr "als laatst"
 
-#: context/contextview.cpp:530 context/contextview.cpp:652
-#: playlist/playlistview.cpp:269 dialogs/edittagdialog.cpp:739
+#: context/contextview.cpp:531 context/contextview.cpp:653
+#: playlist/playlistview.cpp:269 dialogs/edittagdialog.cpp:786
 msgid "kbps"
 msgstr "kbps"
 
@@ -5868,7 +5867,7 @@ msgctxt ""
 msgid "remove %n songs"
 msgstr "%n nummers verwijderen"
 
-#: collection/collectionfilterwidget.cpp:85
+#: collection/collectionfilterwidget.cpp:86
 msgid "searches the collection for all artists that contain the word"
 msgstr "zoek in de collictie voor artiesten met dat woord"
 
@@ -5896,7 +5895,7 @@ msgstr "nummers sorteren"
 msgid "starts with"
 msgstr "begint met"
 
-#: playlist/playlistdelegates.cpp:226
+#: playlist/playlistdelegates.cpp:227
 msgid "stop"
 msgstr "stoppen"
 
@@ -5905,6 +5904,6 @@ msgstr "stoppen"
 msgid "track %1"
 msgstr "nummer %1"
 
-#: covermanager/albumcoverchoicecontroller.cpp:240
+#: covermanager/albumcoverchoicecontroller.cpp:242
 msgid "unknown"
 msgstr "onbekend"

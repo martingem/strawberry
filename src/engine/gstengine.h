@@ -38,7 +38,7 @@
 #include <QString>
 #include <QUrl>
 
-#include "core/timeconstants.h"
+#include "utilities/timeconstants.h"
 #include "engine_fwd.h"
 #include "enginebase.h"
 #include "gststartup.h"
@@ -60,6 +60,8 @@ class GstEngine : public Engine::Base, public GstBufferConsumer {
  public:
   explicit GstEngine(TaskManager *task_manager, QObject *parent = nullptr);
   ~GstEngine() override;
+
+  static const char *kAutoSink;
 
   bool Init() override;
   Engine::State state() const override;
@@ -145,7 +147,6 @@ class GstEngine : public Engine::Base, public GstBufferConsumer {
   static QString GSTdiscovererErrorMessage(GstDiscovererResult result);
 
  private:
-  static const char *kAutoSink;
   static const char *kALSASink;
   static const char *kOpenALSASink;
   static const char *kOSSSink;

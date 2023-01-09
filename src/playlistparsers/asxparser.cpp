@@ -26,11 +26,10 @@
 #include <QByteArray>
 #include <QString>
 #include <QRegularExpression>
-#include <QRegularExpressionMatch>
 #include <QXmlStreamReader>
 #include <QXmlStreamWriter>
 
-#include "core/utilities.h"
+#include "utilities/xmlutils.h"
 #include "settings/playlistsettingspage.h"
 #include "xmlparser.h"
 #include "asxparser.h"

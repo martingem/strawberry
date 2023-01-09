@@ -53,12 +53,14 @@
 #include <QSettings>
 #include <QtEvents>
 
-#include "core/utilities.h"
-#include "core/imageutils.h"
+#include "utilities/strutils.h"
+#include "utilities/mimeutils.h"
+#include "utilities/imageutils.h"
 #include "core/application.h"
 #include "core/song.h"
 #include "core/iconloader.h"
 
+#include "collection/collectionfilteroptions.h"
 #include "collection/collectionbackend.h"
 #include "settings/collectionsettingspage.h"
 #include "organize/organizeformat.h"
@@ -653,9 +655,9 @@ void AlbumCoverChoiceController::SaveCoverEmbeddedAutomatic(const Song &song, co
 
   if (song.source() == Song::Source_Collection) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    QFuture<SongList> future = QtConcurrent::run(&CollectionBackend::GetAlbumSongs, app_->collection_backend(), song.effective_albumartist(), song.effective_album(), QueryOptions());
+    QFuture<SongList> future = QtConcurrent::run(&CollectionBackend::GetAlbumSongs, app_->collection_backend(), song.effective_albumartist(), song.effective_album(), CollectionFilterOptions());
 #else
-    QFuture<SongList> future = QtConcurrent::run(app_->collection_backend(), &CollectionBackend::GetAlbumSongs, song.effective_albumartist(), song.effective_album(), QueryOptions());
+    QFuture<SongList> future = QtConcurrent::run(app_->collection_backend(), &CollectionBackend::GetAlbumSongs, song.effective_albumartist(), song.effective_album(), CollectionFilterOptions());
 #endif
     QFutureWatcher<SongList> *watcher = new QFutureWatcher<SongList>();
     QObject::connect(watcher, &QFutureWatcher<SongList>::finished, this, [this, watcher, song, result]() {
@@ -698,9 +700,9 @@ void AlbumCoverChoiceController::SaveCoverEmbeddedAutomatic(const Song &song, co
 
   if (song.source() == Song::Source_Collection) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    QFuture<SongList> future = QtConcurrent::run(&CollectionBackend::GetAlbumSongs, app_->collection_backend(), song.effective_albumartist(), song.effective_album(), QueryOptions());
+    QFuture<SongList> future = QtConcurrent::run(&CollectionBackend::GetAlbumSongs, app_->collection_backend(), song.effective_albumartist(), song.effective_album(), CollectionFilterOptions());
 #else
-    QFuture<SongList> future = QtConcurrent::run(app_->collection_backend(), &CollectionBackend::GetAlbumSongs, song.effective_albumartist(), song.effective_album(), QueryOptions());
+    QFuture<SongList> future = QtConcurrent::run(app_->collection_backend(), &CollectionBackend::GetAlbumSongs, song.effective_albumartist(), song.effective_album(), CollectionFilterOptions());
 #endif
     QFutureWatcher<SongList> *watcher = new QFutureWatcher<SongList>();
     QObject::connect(watcher, &QFutureWatcher<SongList>::finished, this, [this, watcher, song, cover_filename]() {

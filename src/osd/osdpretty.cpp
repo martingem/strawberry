@@ -64,7 +64,9 @@
 #  include <windows.h>
 #endif
 
-#include "core/utilities.h"
+#ifdef Q_OS_WIN
+#  include "utilities/winutils.h"
+#endif
 
 using namespace std::chrono_literals;
 
@@ -333,7 +335,7 @@ void OSDPretty::paintEvent(QPaintEvent*) {
 
   // Box border
   p.setBrush(QBrush());
-  p.setPen(QPen(background_color_.darker(150), 3));
+  p.setPen(QPen(background_color_.darker(150), 2));
   p.drawRoundedRect(box, kBorderRadius, kBorderRadius);
 
 }

@@ -26,10 +26,9 @@
 #include <QByteArray>
 #include <QString>
 #include <QRegularExpression>
-#include <QRegularExpressionMatch>
 #include <QTextStream>
 
-#include "core/timeconstants.h"
+#include "utilities/timeconstants.h"
 #include "settings/playlistsettingspage.h"
 #include "parserbase.h"
 #include "plsparser.h"
