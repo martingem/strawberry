@@ -329,7 +329,7 @@ QString DateItemDelegate::displayText(const QVariant &value, const QLocale &loca
   bool ok = false;
   qint64 time = value.toLongLong(&ok);
 
-  if (!ok || time == -1) {
+  if (!ok || time <= 0) {
     return QString();
   }
 
@@ -342,7 +342,7 @@ QString LastPlayedItemDelegate::displayText(const QVariant &value, const QLocale
   bool ok = false;
   const qint64 time = value.toLongLong(&ok);
 
-  if (!ok || time == -1) {
+  if (!ok || time <= 0) {
     return tr("Never");
   }
 

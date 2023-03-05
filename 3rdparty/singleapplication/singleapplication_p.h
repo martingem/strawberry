@@ -39,31 +39,19 @@
 #include <QString>
 #include <QHash>
 
-#include "singleapplication.h"
+#include "singleapplication_t.h"
 
 class QLocalServer;
 class QLocalSocket;
 class QSharedMemory;
 
-struct InstancesInfo {
-  bool primary;
-  quint32 secondary;
-  qint64 primaryPid;
-  char primaryUser[128];
-  quint16 checksum;
-};
-
-struct ConnectionInfo {
-  explicit ConnectionInfo() : msgLen(0), instanceId(0), stage(0) {}
-  quint64 msgLen;
-  quint32 instanceId;
-  quint8 stage;
-};
-
-class SingleApplicationPrivate : public QObject {
+class SingleApplicationPrivateClass : public QObject {
   Q_OBJECT
 
  public:
+  explicit SingleApplicationPrivateClass(SingleApplicationClass *ptr);
+  ~SingleApplicationPrivateClass() override;
+
   enum ConnectionType : quint8 {
     InvalidConnection = 0,
     NewInstance = 1,
@@ -74,12 +62,25 @@ class SingleApplicationPrivate : public QObject {
     StageInitHeader = 0,
     StageInitBody = 1,
     StageConnectedHeader = 2,
-    StageConnectedBody = 3,
+    StageConnectedBody = 3
   };
-  Q_DECLARE_PUBLIC(SingleApplication)
+  Q_DECLARE_PUBLIC(SingleApplicationClass)
 
-  explicit SingleApplicationPrivate(SingleApplication *ptr);
-  ~SingleApplicationPrivate() override;
+  struct InstancesInfo {
+    explicit InstancesInfo() : primary(false), secondary(0), primaryPid(0), checksum(0) {}
+    bool primary;
+    quint32 secondary;
+    qint64 primaryPid;
+    char primaryUser[128];
+    quint16 checksum;
+  };
+
+  struct ConnectionInfo {
+    explicit ConnectionInfo() : msgLen(0), instanceId(0), stage(0) {}
+    quint64 msgLen;
+    quint32 instanceId;
+    quint8 stage;
+  };
 
   static QString getUsername();
   void genBlockServerName();
@@ -98,13 +99,13 @@ class SingleApplicationPrivate : public QObject {
   bool writeConfirmedMessage(const int timeout, const QByteArray &msg) const;
   static void randomSleep();
 
-  SingleApplication *q_ptr;
+  SingleApplicationClass *q_ptr;
   QSharedMemory *memory_;
   QLocalSocket *socket_;
   QLocalServer *server_;
   quint32 instanceNumber_;
   QString blockServerName_;
-  SingleApplication::Options options_;
+  SingleApplicationClass::Options options_;
   QHash<QLocalSocket*, ConnectionInfo> connectionMap_;
 
  public slots:

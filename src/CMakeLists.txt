@@ -67,6 +67,7 @@ set(SOURCES
   analyzer/blockanalyzer.cpp
   analyzer/boomanalyzer.cpp
   analyzer/rainbowanalyzer.cpp
+  analyzer/sonogram.cpp
 
   equalizer/equalizer.cpp
   equalizer/equalizerslider.cpp
@@ -176,6 +177,7 @@ set(SOURCES
   lyrics/geniuslyricsprovider.cpp
   lyrics/musixmatchlyricsprovider.cpp
   lyrics/chartlyricsprovider.cpp
+  lyrics/stands4lyricsprovider.cpp
 
   providers/musixmatchprovider.cpp
 
@@ -310,6 +312,7 @@ set(HEADERS
   analyzer/blockanalyzer.h
   analyzer/boomanalyzer.h
   analyzer/rainbowanalyzer.h
+  analyzer/sonogram.h
 
   equalizer/equalizer.h
   equalizer/equalizerslider.h
@@ -411,6 +414,7 @@ set(HEADERS
   lyrics/geniuslyricsprovider.h
   lyrics/musixmatchlyricsprovider.h
   lyrics/chartlyricsprovider.h
+  lyrics/stands4lyricsprovider.h
 
   settings/settingsdialog.h
   settings/settingspage.h

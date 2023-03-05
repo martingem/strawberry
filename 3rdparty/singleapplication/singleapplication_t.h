@@ -31,24 +31,40 @@
 //
 //
 
-#ifndef SINGLEAPPLICATION_H
-#define SINGLEAPPLICATION_H
+#ifndef SINGLEAPPLICATION_T_H
+#define SINGLEAPPLICATION_T_H
 
 #include <QtGlobal>
-#include <QApplication>
+
+#undef ApplicationClass
+#undef SingleApplicationClass
+#undef SingleApplicationPrivateClass
+
+#if defined(SINGLEAPPLICATION)
+#  include <QApplication>
+#  define ApplicationClass QApplication
+#  define SingleApplicationClass SingleApplication
+#  define SingleApplicationPrivateClass SingleApplicationPrivate
+#elif defined(SINGLECOREAPPLICATION)
+#  include <QCoreApplication>
+#  define ApplicationClass QCoreApplication
+#  define SingleApplicationClass SingleCoreApplication
+#  define SingleApplicationPrivateClass SingleCoreApplicationPrivate
+#else
+#  error "Define SINGLEAPPLICATION or SINGLECOREAPPLICATION."
+#endif
+
 #include <QFlags>
 #include <QByteArray>
 
-class SingleApplicationPrivate;
+class SingleApplicationPrivateClass;
 
 /**
  * @brief The SingleApplication class handles multiple instances of the same Application
  * @see QApplication
  */
-class SingleApplication : public QApplication {  // clazy:exclude=ctor-missing-parent-argument
+class SingleApplicationClass : public ApplicationClass {  // clazy:exclude=ctor-missing-parent-argument
   Q_OBJECT
-
-  using app_t = QApplication;
 
  public:
   /**
@@ -61,7 +77,7 @@ class SingleApplication : public QApplication {  // clazy:exclude=ctor-missing-p
    * block will be user wide.
    * @enum
    */
-  enum Mode {
+  enum class Mode {
     User = 1 << 0,
     System = 1 << 1,
     SecondaryNotification = 1 << 2,
@@ -86,11 +102,11 @@ class SingleApplication : public QApplication {  // clazy:exclude=ctor-missing-p
    * instance and the secondary instance.
    * @note The timeout is just a hint for the maximum time of blocking
    * operations. It does not guarantee that the SingleApplication
-   * initialisation will be completed in given time, though is a good hint.
+   * initialization will be completed in given time, though is a good hint.
    * Usually 4*timeout would be the worst case (fail) scenario.
    */
-  explicit SingleApplication(int &argc, char *argv[], const bool allowSecondary = false, const Options options = Mode::User, const int timeout = 1000);
-  ~SingleApplication() override;
+  explicit SingleApplicationClass(int &argc, char *argv[], const bool allowSecondary = false, const Options options = Mode::User, const int timeout = 1000);
+  ~SingleApplicationClass() override;
 
   /**
    * @brief Returns if the instance is the primary instance
@@ -142,11 +158,15 @@ class SingleApplication : public QApplication {  // clazy:exclude=ctor-missing-p
   void receivedMessage(quint32 instanceId, QByteArray message);
 
  private:
-  SingleApplicationPrivate *d_ptr;
+  SingleApplicationPrivateClass *d_ptr;
+#if defined(SINGLEAPPLICATION)
   Q_DECLARE_PRIVATE(SingleApplication)
+#elif defined(SINGLECOREAPPLICATION)
+  Q_DECLARE_PRIVATE(SingleCoreApplication)
+#endif
   void abortSafely();
 };
 
-Q_DECLARE_OPERATORS_FOR_FLAGS(SingleApplication::Options)
+Q_DECLARE_OPERATORS_FOR_FLAGS(SingleApplicationClass::Options)
 
-#endif  // SINGLEAPPLICATION_H
+#endif  // SINGLEAPPLICATION_T_H
