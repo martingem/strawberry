@@ -150,7 +150,7 @@ jobs:
         run: cmake -E make_directory build
       - name: Configure CMake
         working-directory: build
-        run: cmake ..
+        run: cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_WERROR=ON
       - name: make deb
         run: dpkg-buildpackage -b -d -uc -us -nc -j2
       - name: Upload a Build Artifact
