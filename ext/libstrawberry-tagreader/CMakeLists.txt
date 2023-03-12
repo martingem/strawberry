@@ -43,11 +43,19 @@ target_include_directories(libstrawberry-tagreader PRIVATE
 
 target_link_libraries(libstrawberry-tagreader PRIVATE
   ${GLIB_LIBRARIES}
-  ${PROTOBUF_LIBRARY}
+  ${Protobuf_LIBRARIES}
   ${QtCore_LIBRARIES}
   ${QtNetwork_LIBRARIES}
   libstrawberry-common
 )
+
+if(WIN32 AND Protobuf_VERSION VERSION_GREATER_EQUAL 4.22.0)
+  if (MSVC)
+    target_link_libraries(libstrawberry-tagreader PRIVATE abseil_dll)
+  else()
+    target_link_libraries(libstrawberry-tagreader PRIVATE absl_log_internal_message absl_log_internal_check_op)
+  endif()
+endif()
 
 if(USE_TAGLIB AND TAGLIB_FOUND)
   target_include_directories(libstrawberry-tagreader SYSTEM PRIVATE ${TAGLIB_INCLUDE_DIRS})

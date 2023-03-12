@@ -168,10 +168,11 @@ set(SOURCES
 
   lyrics/lyricsproviders.cpp
   lyrics/lyricsprovider.cpp
+  lyrics/lyricssearchrequest.h
+  lyrics/lyricssearchresult.h
   lyrics/lyricsfetcher.cpp
   lyrics/lyricsfetchersearch.cpp
   lyrics/jsonlyricsprovider.cpp
-  lyrics/auddlyricsprovider.cpp
   lyrics/ovhlyricsprovider.cpp
   lyrics/lololyricsprovider.cpp
   lyrics/geniuslyricsprovider.cpp
@@ -408,7 +409,6 @@ set(HEADERS
   lyrics/lyricsfetcher.h
   lyrics/lyricsfetchersearch.h
   lyrics/jsonlyricsprovider.h
-  lyrics/auddlyricsprovider.h
   lyrics/ovhlyricsprovider.h
   lyrics/lololyricsprovider.h
   lyrics/geniuslyricsprovider.h
@@ -966,6 +966,7 @@ link_directories(
   ${GOBJECT_LIBRARY_DIRS}
   ${GNUTLS_LIBRARY_DIRS}
   ${SQLITE_LIBRARY_DIRS}
+  ${PROTOBUF_LIBRARY_DIRS}
   ${SINGLEAPPLICATION_LIBRARY_DIRS}
   ${SINGLECOREAPPLICATION_LIBRARY_DIRS}
 )
@@ -1085,6 +1086,7 @@ target_link_libraries(strawberry_lib PUBLIC
   ${GNUTLS_LIBRARIES}
   ${SQLITE_LIBRARIES}
   ${QT_LIBRARIES}
+  ${Protobuf_LIBRARIES}
   ${SINGLEAPPLICATION_LIBRARIES}
   ${SINGLECOREAPPLICATION_LIBRARIES}
   libstrawberry-common
