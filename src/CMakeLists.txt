@@ -55,6 +55,7 @@ set(SOURCES
   utilities/transliterate.cpp
   utilities/xmlutils.cpp
   utilities/filemanagerutils.cpp
+  utilities/coverutils.cpp
 
   engine/enginetype.cpp
   engine/enginebase.cpp
@@ -173,12 +174,13 @@ set(SOURCES
   lyrics/lyricsfetcher.cpp
   lyrics/lyricsfetchersearch.cpp
   lyrics/jsonlyricsprovider.cpp
+  lyrics/auddlyricsprovider.cpp
   lyrics/ovhlyricsprovider.cpp
   lyrics/lololyricsprovider.cpp
   lyrics/geniuslyricsprovider.cpp
   lyrics/musixmatchlyricsprovider.cpp
   lyrics/chartlyricsprovider.cpp
-  lyrics/stands4lyricsprovider.cpp
+  lyrics/lyricscomlyricsprovider.cpp
 
   providers/musixmatchprovider.cpp
 
@@ -268,6 +270,7 @@ set(SOURCES
   scrobbler/scrobblerservice.cpp
   scrobbler/scrobblercache.cpp
   scrobbler/scrobblercacheitem.cpp
+  scrobbler/scrobblemetadata.cpp
   scrobbler/scrobblingapi20.cpp
   scrobbler/lastfmscrobbler.cpp
   scrobbler/librefmscrobbler.cpp
@@ -409,12 +412,13 @@ set(HEADERS
   lyrics/lyricsfetcher.h
   lyrics/lyricsfetchersearch.h
   lyrics/jsonlyricsprovider.h
+  lyrics/auddlyricsprovider.h
   lyrics/ovhlyricsprovider.h
   lyrics/lololyricsprovider.h
   lyrics/geniuslyricsprovider.h
   lyrics/musixmatchlyricsprovider.h
   lyrics/chartlyricsprovider.h
-  lyrics/stands4lyricsprovider.h
+  lyrics/lyricscomlyricsprovider.h
 
   settings/settingsdialog.h
   settings/settingspage.h
@@ -499,7 +503,6 @@ set(HEADERS
   scrobbler/scrobblerservices.h
   scrobbler/scrobblerservice.h
   scrobbler/scrobblercache.h
-  scrobbler/scrobblercacheitem.h
   scrobbler/scrobblingapi20.h
   scrobbler/lastfmscrobbler.h
   scrobbler/librefmscrobbler.h

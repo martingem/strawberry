@@ -57,12 +57,13 @@
 #include "covermanager/spotifycoverprovider.h"
 
 #include "lyrics/lyricsproviders.h"
+#include "lyrics/auddlyricsprovider.h"
 #include "lyrics/geniuslyricsprovider.h"
 #include "lyrics/ovhlyricsprovider.h"
 #include "lyrics/lololyricsprovider.h"
 #include "lyrics/musixmatchlyricsprovider.h"
 #include "lyrics/chartlyricsprovider.h"
-#include "lyrics/stands4lyricsprovider.h"
+#include "lyrics/lyricscomlyricsprovider.h"
 
 #include "scrobbler/audioscrobbler.h"
 #include "scrobbler/lastfmimport.h"
@@ -148,12 +149,13 @@ class ApplicationImpl {
         lyrics_providers_([app]() {
           LyricsProviders *lyrics_providers = new LyricsProviders(app);
           // Initialize the repository of lyrics providers.
+          lyrics_providers->AddProvider(new AuddLyricsProvider(lyrics_providers->network(), app));
           lyrics_providers->AddProvider(new GeniusLyricsProvider(lyrics_providers->network(), app));
           lyrics_providers->AddProvider(new OVHLyricsProvider(lyrics_providers->network(), app));
           lyrics_providers->AddProvider(new LoloLyricsProvider(lyrics_providers->network(), app));
           lyrics_providers->AddProvider(new MusixmatchLyricsProvider(lyrics_providers->network(), app));
           lyrics_providers->AddProvider(new ChartLyricsProvider(lyrics_providers->network(), app));
-          lyrics_providers->AddProvider(new Stands4LyricsProvider(lyrics_providers->network(), app));
+          lyrics_providers->AddProvider(new LyricsComLyricsProvider(lyrics_providers->network(), app));
           lyrics_providers->ReloadSettings();
           return lyrics_providers;
         }),

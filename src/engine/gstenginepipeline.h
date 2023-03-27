@@ -74,6 +74,7 @@ class GstEnginePipeline : public QObject {
   void set_proxy_settings(const QString &address, const bool authentication, const QString &user, const QString &pass);
   void set_channels(const bool enabled, const int channels);
   void set_bs2b_enabled(const bool enabled);
+  void set_strict_ssl_enabled(const bool enabled);
   void set_fading_enabled(const bool enabled);
 
   // Creates the pipeline, returns false on error
@@ -151,7 +152,7 @@ class GstEnginePipeline : public QObject {
   static GstPadProbeReturn PlaybinProbeCallback(GstPad *pad, GstPadProbeInfo *info, gpointer self);
   static void ElementAddedCallback(GstBin *bin, GstBin*, GstElement *element, gpointer self);
   static void PadAddedCallback(GstElement *element, GstPad *pad, gpointer self);
-  static void NotifySourceCallback(GstPlayBin *bin, GParamSpec *param_spec, gpointer self);
+  static void SourceSetupCallback(GstElement *playbin, GstElement *source, gpointer self);
   static void NotifyVolumeCallback(GstElement *element, GParamSpec *param_spec, gpointer self);
   static void AboutToFinishCallback(GstPlayBin *playbin, gpointer self);
   static GstBusSyncReply BusSyncCallback(GstBus *bus, GstMessage *msg, gpointer self);
@@ -229,6 +230,7 @@ class GstEnginePipeline : public QObject {
 
   // Options
   bool bs2b_enabled_;
+  bool strict_ssl_enabled_;
 
   // These get called when there is a new audio buffer available
   QList<GstBufferConsumer*> buffer_consumers_;

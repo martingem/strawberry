@@ -1,6 +1,6 @@
 /*
  * Strawberry Music Player
- * Copyright 2023, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2023, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,50 +17,46 @@
  *
  */
 
-#ifndef STANDS4LYRICSPROVIDER_H
-#define STANDS4LYRICSPROVIDER_H
+#ifndef AUDDLYRICSPROVIDER_H
+#define AUDDLYRICSPROVIDER_H
+
+#include "config.h"
 
 #include <QtGlobal>
 #include <QObject>
 #include <QList>
 #include <QVariant>
 #include <QString>
-#include <QUrl>
+#include <QJsonArray>
 
 #include "jsonlyricsprovider.h"
-#include "lyricssearchrequest.h"
+#include "lyricsfetcher.h"
 
 class QNetworkReply;
 class NetworkAccessManager;
 
-class Stands4LyricsProvider : public JsonLyricsProvider {
+class AuddLyricsProvider : public JsonLyricsProvider {
   Q_OBJECT
 
  public:
-  explicit Stands4LyricsProvider(NetworkAccessManager *network, QObject *parent = nullptr);
-  ~Stands4LyricsProvider() override;
+  explicit AuddLyricsProvider(NetworkAccessManager *network, QObject *parent = nullptr);
+  ~AuddLyricsProvider() override;
 
   bool StartSearch(const int id, const LyricsSearchRequest &request) override;
   void CancelSearch(const int id) override;
 
  private:
-  void SendSearchRequest(const int id, const LyricsSearchRequest &request);
-  void CreateLyricsRequest(const int id, const LyricsSearchRequest &request);
-  void SendLyricsRequest(const int id, const LyricsSearchRequest &request, const QString &result_artist, const QString &result_album, const QString &result_title, QUrl url = QUrl());
   void Error(const QString &error, const QVariant &debug = QVariant()) override;
-  static QString StringFixup(QString string);
+  QJsonArray ExtractResult(const QByteArray &data);
 
  private slots:
   void HandleSearchReply(QNetworkReply *reply, const int id, const LyricsSearchRequest &request);
-  void HandleLyricsReply(QNetworkReply *reply, const int id, const LyricsSearchRequest &request, const QString &result_artist, const QString &result_album, const QString &result_title);
 
  private:
-  static const char *kApiUrl;
-  static const char *kLyricsUrl;
-  static const char *kUID;
-  static const char *kTokenB64;
+  static const char *kUrlSearch;
+  static const int kMaxLength;
   QList<QNetworkReply*> replies_;
-  bool use_api_;
+
 };
 
-#endif  // STANDS4LYRICSPROVIDER_H
+#endif  // AUDDLYRICSPROVIDER_H

@@ -23,7 +23,6 @@
 
 #include <limits>
 
-#include <QThread>
 #include <QStandardPaths>
 #include <QAbstractItemModel>
 #include <QItemSelectionModel>
@@ -46,6 +45,7 @@
 #include "core/iconloader.h"
 #include "utilities/strutils.h"
 #include "utilities/timeutils.h"
+#include "utilities/coveroptions.h"
 #include "collection/collection.h"
 #include "collection/collectionmodel.h"
 #include "collection/collectiondirectorymodel.h"
@@ -83,16 +83,6 @@ CollectionSettingsPage::CollectionSettingsPage(SettingsDialog *dialog, QWidget *
   ui_->combobox_disk_cache_size->addItem("MB", static_cast<int>(CacheSizeUnit::MB));
   ui_->combobox_disk_cache_size->addItem("GB", static_cast<int>(CacheSizeUnit::GB));
 
-  ui_->combobox_iopriority->addItem("Auto", static_cast<int>(Utilities::IoPriority::IOPRIO_CLASS_NONE));
-  ui_->combobox_iopriority->addItem("Realtime", static_cast<int>(Utilities::IoPriority::IOPRIO_CLASS_RT));
-  ui_->combobox_iopriority->addItem("Best effort", static_cast<int>(Utilities::IoPriority::IOPRIO_CLASS_BE));
-  ui_->combobox_iopriority->addItem("Idle", static_cast<int>(Utilities::IoPriority::IOPRIO_CLASS_IDLE));
-
-  ui_->combobox_threadpriority->addItem("Idle", QThread::Priority::IdlePriority);
-  ui_->combobox_threadpriority->addItem("Lowest", QThread::Priority::LowestPriority);
-  ui_->combobox_threadpriority->addItem("Low", QThread::Priority::LowPriority);
-  ui_->combobox_threadpriority->addItem("Normal", QThread::Priority::NormalPriority);
-
   QObject::connect(ui_->add, &QPushButton::clicked, this, &CollectionSettingsPage::Add);
   QObject::connect(ui_->remove, &QPushButton::clicked, this, &CollectionSettingsPage::Remove);
 
@@ -115,11 +105,6 @@ CollectionSettingsPage::CollectionSettingsPage(SettingsDialog *dialog, QWidget *
 
 #ifndef HAVE_SONGFINGERPRINTING
   ui_->song_tracking->hide();
-#endif
-
-#ifdef Q_OS_WIN32
-  ui_->label_iopriority->hide();
-  ui_->combobox_iopriority->hide();
 #endif
 
 }
@@ -204,25 +189,25 @@ void CollectionSettingsPage::Load() {
   QStringList filters = s.value("cover_art_patterns", QStringList() << "front" << "cover").toStringList();
   ui_->cover_art_patterns->setText(filters.join(","));
 
-  const SaveCoverType save_cover_type = static_cast<SaveCoverType>(s.value("save_cover_type", static_cast<int>(SaveCoverType::Cache)).toInt());
+  const CoverOptions::CoverType save_cover_type = static_cast<CoverOptions::CoverType>(s.value("save_cover_type", static_cast<int>(CoverOptions::CoverType::Cache)).toInt());
   switch (save_cover_type) {
-    case SaveCoverType::Cache:
+    case CoverOptions::CoverType::Cache:
       ui_->radiobutton_save_albumcover_cache->setChecked(true);
       break;
-    case SaveCoverType::Album:
+    case CoverOptions::CoverType::Album:
       ui_->radiobutton_save_albumcover_albumdir->setChecked(true);
       break;
-    case SaveCoverType::Embedded:
+    case CoverOptions::CoverType::Embedded:
       ui_->radiobutton_save_albumcover_embedded->setChecked(true);
       break;
   }
 
-  const SaveCoverFilename save_cover_filename = static_cast<SaveCoverFilename>(s.value("save_cover_filename", static_cast<int>(SaveCoverFilename::Pattern)).toInt());
+  const CoverOptions::CoverFilename save_cover_filename = static_cast<CoverOptions::CoverFilename>(s.value("save_cover_filename", static_cast<int>(CoverOptions::CoverFilename::Pattern)).toInt());
   switch (save_cover_filename) {
-    case SaveCoverFilename::Hash:
+    case CoverOptions::CoverFilename::Hash:
       ui_->radiobutton_cover_hash->setChecked(true);
       break;
-    case SaveCoverFilename::Pattern:
+    case CoverOptions::CoverFilename::Pattern:
       ui_->radiobutton_cover_pattern->setChecked(true);
       break;
   }
@@ -249,18 +234,6 @@ void CollectionSettingsPage::Load() {
   ui_->checkbox_delete_files->setChecked(false);
   ui_->checkbox_delete_files->hide();
 #endif
-
-#ifndef Q_OS_WIN32
-  ui_->combobox_iopriority->setCurrentIndex(ui_->combobox_iopriority->findData(s.value("io_priority", static_cast<int>(Utilities::IoPriority::IOPRIO_CLASS_IDLE)).toInt()));
-#endif
-
-  ui_->combobox_threadpriority->setCurrentIndex(ui_->combobox_threadpriority->findData(s.value("thread_priority", QThread::Priority::IdlePriority).toInt()));
-
-  int workers = s.value("tagreader_workers", qBound(1, QThread::idealThreadCount() / 2, 4)).toInt();
-  if (workers <= 0 || workers > 4) {
-    workers = 4;
-  }
-  ui_->spinbox_tagreaderworkers->setValue(workers);
 
   s.endGroup();
 
@@ -297,15 +270,15 @@ void CollectionSettingsPage::Save() {
 
   s.setValue("cover_art_patterns", filters);
 
-  SaveCoverType save_cover_type = SaveCoverType::Cache;
-  if (ui_->radiobutton_save_albumcover_cache->isChecked()) save_cover_type = SaveCoverType::Cache;
-  else if (ui_->radiobutton_save_albumcover_albumdir->isChecked()) save_cover_type = SaveCoverType::Album;
-  else if (ui_->radiobutton_save_albumcover_embedded->isChecked()) save_cover_type = SaveCoverType::Embedded;
+  CoverOptions::CoverType save_cover_type = CoverOptions::CoverType::Cache;
+  if (ui_->radiobutton_save_albumcover_cache->isChecked()) save_cover_type = CoverOptions::CoverType::Cache;
+  else if (ui_->radiobutton_save_albumcover_albumdir->isChecked()) save_cover_type = CoverOptions::CoverType::Album;
+  else if (ui_->radiobutton_save_albumcover_embedded->isChecked()) save_cover_type = CoverOptions::CoverType::Embedded;
   s.setValue("save_cover_type", static_cast<int>(save_cover_type));
 
-  SaveCoverFilename save_cover_filename = SaveCoverFilename::Hash;
-  if (ui_->radiobutton_cover_hash->isChecked()) save_cover_filename = SaveCoverFilename::Hash;
-  else if (ui_->radiobutton_cover_pattern->isChecked()) save_cover_filename = SaveCoverFilename::Pattern;
+  CoverOptions::CoverFilename save_cover_filename = CoverOptions::CoverFilename::Hash;
+  if (ui_->radiobutton_cover_hash->isChecked()) save_cover_filename = CoverOptions::CoverFilename::Hash;
+  else if (ui_->radiobutton_cover_pattern->isChecked()) save_cover_filename = CoverOptions::CoverFilename::Pattern;
   s.setValue("save_cover_filename", static_cast<int>(save_cover_filename));
 
   s.setValue("cover_pattern", ui_->lineedit_cover_pattern->text());
@@ -325,13 +298,6 @@ void CollectionSettingsPage::Save() {
   s.setValue("overwrite_rating", ui_->checkbox_overwrite_rating->isChecked());
 
   s.setValue("delete_files", ui_->checkbox_delete_files->isChecked());
-
-#ifndef Q_OS_WIN32
-  s.setValue("io_priority", ui_->combobox_iopriority->currentData().toInt());
-#endif
-
-  s.setValue("thread_priority", ui_->combobox_threadpriority->currentData().toInt());
-  s.setValue("tagreader_workers", ui_->spinbox_tagreaderworkers->value());
 
   s.endGroup();
 

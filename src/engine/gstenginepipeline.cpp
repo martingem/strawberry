@@ -55,11 +55,11 @@
 #include "gstenginepipeline.h"
 #include "gstbufferconsumer.h"
 
-const int GstEnginePipeline::kGstStateTimeoutNanosecs = 10000000;
-const int GstEnginePipeline::kFaderFudgeMsec = 2000;
+constexpr int GstEnginePipeline::kGstStateTimeoutNanosecs = 10000000;
+constexpr int GstEnginePipeline::kFaderFudgeMsec = 2000;
 
-const int GstEnginePipeline::kEqBandCount = 10;
-const int GstEnginePipeline::kEqBandFrequencies[] = { 60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000 };
+constexpr int GstEnginePipeline::kEqBandCount = 10;
+constexpr int GstEnginePipeline::kEqBandFrequencies[] = { 60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000 };
 
 int GstEnginePipeline::sId = 1;
 
@@ -86,6 +86,7 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       channels_enabled_(false),
       channels_(0),
       bs2b_enabled_(false),
+      strict_ssl_enabled_(false),
       segment_start_(0),
       segment_start_received_(false),
       end_offset_nanosec_(-1),
@@ -262,6 +263,10 @@ void GstEnginePipeline::set_bs2b_enabled(const bool enabled) {
   bs2b_enabled_ = enabled;
 }
 
+void GstEnginePipeline::set_strict_ssl_enabled(const bool enabled) {
+  strict_ssl_enabled_ = enabled;
+}
+
 void GstEnginePipeline::set_fading_enabled(const bool enabled) {
   fading_enabled_ = enabled;
 }
@@ -290,7 +295,7 @@ bool GstEnginePipeline::InitFromUrl(const QByteArray &stream_url, const QUrl &or
 
   guint version_major = 0, version_minor = 0, version_micro = 0, version_nano = 0;
   gst_plugins_base_version(&version_major, &version_minor, &version_micro, &version_nano);
-  if (QVersionNumber::compare(QVersionNumber(version_major, version_minor, version_micro), QVersionNumber(1, 22, 0)) >= 0) {
+  if (QVersionNumber::compare(QVersionNumber(static_cast<int>(version_major), static_cast<int>(version_minor), static_cast<int>(version_micro)), QVersionNumber(1, 22, 0)) >= 0) {
     pipeline_ = CreateElement("playbin3", "pipeline", nullptr, error);
   }
   else {
@@ -300,7 +305,7 @@ bool GstEnginePipeline::InitFromUrl(const QByteArray &stream_url, const QUrl &or
   if (!pipeline_) return false;
 
   pad_added_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "pad-added", &PadAddedCallback, this);
-  notify_source_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "notify::source", &NotifySourceCallback, this);
+  notify_source_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "source-setup", &SourceSetupCallback, this);
   about_to_finish_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "about-to-finish", &AboutToFinishCallback, this);
 
   if (!InitAudioBin(error)) return false;
@@ -518,7 +523,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
     // As a workaround, we create two dummy bands at both ends of the spectrum.
     // This causes the actual first and last adjustable bands to be implemented using band-pass filters.
 
-    g_object_set(G_OBJECT(equalizer_), "num-bands", 10 + 2, nullptr);
+    g_object_set(G_OBJECT(equalizer_), "num-bands", kEqBandCount + 2, nullptr);
 
     // Dummy first band (bandwidth 0, cutting below 20Hz):
     GstObject *first_band = GST_OBJECT(gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(equalizer_), 0));
@@ -788,40 +793,40 @@ void GstEnginePipeline::ElementAddedCallback(GstBin *bin, GstBin*, GstElement *e
 
 }
 
-void GstEnginePipeline::NotifySourceCallback(GstPlayBin *bin, GParamSpec *param_spec, gpointer self) {
+void GstEnginePipeline::SourceSetupCallback(GstElement *playbin, GstElement *source, gpointer self) {
 
-  Q_UNUSED(param_spec)
+  Q_UNUSED(playbin)
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
-  GstElement *element = nullptr;
-  g_object_get(bin, "source", &element, nullptr);
-  if (!element) {
-    return;
-  }
-
-  if (g_object_class_find_property(G_OBJECT_GET_CLASS(element), "device") && !instance->source_device().isEmpty()) {
+  if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "device") && !instance->source_device().isEmpty()) {
     // Gstreamer is not able to handle device in URL (referring to Gstreamer documentation, this might be added in the future).
     // Despite that, for now we include device inside URL: we decompose it during Init and set device here, when this callback is called.
-    g_object_set(element, "device", instance->source_device().toLocal8Bit().constData(), nullptr);
+    qLog(Debug) << "Setting device";
+    g_object_set(source, "device", instance->source_device().toLocal8Bit().constData(), nullptr);
   }
 
-  if (g_object_class_find_property(G_OBJECT_GET_CLASS(element), "user-agent")) {
+  if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "user-agent")) {
+    qLog(Debug) << "Setting user-agent";
     QString user_agent = QString("%1 %2").arg(QCoreApplication::applicationName(), QCoreApplication::applicationVersion());
-    g_object_set(element, "user-agent", user_agent.toUtf8().constData(), nullptr);
-    g_object_set(element, "ssl-strict", FALSE, nullptr);
+    g_object_set(source, "user-agent", user_agent.toUtf8().constData(), nullptr);
   }
 
-  if (!instance->proxy_address_.isEmpty() && g_object_class_find_property(G_OBJECT_GET_CLASS(element), "proxy")) {
+  if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "ssl-strict")) {
+    qLog(Debug) << "Turning" << (instance->strict_ssl_enabled_ ? "on" : "off") << "strict SSL";
+    g_object_set(source, "ssl-strict", instance->strict_ssl_enabled_ ? TRUE : FALSE, nullptr);
+  }
+
+  if (!instance->proxy_address_.isEmpty() && g_object_class_find_property(G_OBJECT_GET_CLASS(source), "proxy")) {
     qLog(Debug) << "Setting proxy to" << instance->proxy_address_;
-    g_object_set(element, "proxy", instance->proxy_address_.toUtf8().constData(), nullptr);
+    g_object_set(source, "proxy", instance->proxy_address_.toUtf8().constData(), nullptr);
     if (instance->proxy_authentication_ &&
-        g_object_class_find_property(G_OBJECT_GET_CLASS(element), "proxy-id") &&
-        g_object_class_find_property(G_OBJECT_GET_CLASS(element), "proxy-pw") &&
+        g_object_class_find_property(G_OBJECT_GET_CLASS(source), "proxy-id") &&
+        g_object_class_find_property(G_OBJECT_GET_CLASS(source), "proxy-pw") &&
         !instance->proxy_user_.isEmpty() &&
         !instance->proxy_pass_.isEmpty())
     {
-      g_object_set(element, "proxy-id", instance->proxy_user_.toUtf8().constData(), "proxy-pw", instance->proxy_pass_.toUtf8().constData(), nullptr);
+      g_object_set(source, "proxy-id", instance->proxy_user_.toUtf8().constData(), "proxy-pw", instance->proxy_pass_.toUtf8().constData(), nullptr);
     }
   }
 
@@ -831,8 +836,6 @@ void GstEnginePipeline::NotifySourceCallback(GstPlayBin *bin, GParamSpec *param_
     emit instance->BufferingFinished();
     instance->SetState(GST_STATE_PLAYING);
   }
-
-  g_object_unref(element);
 
 }
 

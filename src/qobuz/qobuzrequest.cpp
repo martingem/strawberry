@@ -20,7 +20,9 @@
 #include "config.h"
 
 #include <QObject>
+#include <QList>
 #include <QByteArray>
+#include <QByteArrayList>
 #include <QString>
 #include <QUrl>
 #include <QImage>
@@ -36,8 +38,9 @@
 #include "core/networkaccessmanager.h"
 #include "core/song.h"
 #include "core/application.h"
-#include "utilities/imageutils.h"
 #include "utilities/timeconstants.h"
+#include "utilities/imageutils.h"
+#include "utilities/coverutils.h"
 #include "qobuzservice.h"
 #include "qobuzurlhandler.h"
 #include "qobuzbaserequest.h"
@@ -1264,7 +1267,7 @@ void QobuzRequest::AddAlbumCoverRequest(const Song &song) {
 
   AlbumCoverRequest request;
   request.url = cover_url;
-  request.filename = app_->album_cover_loader()->CoverFilePath(song.source(), song.effective_albumartist(), song.effective_album(), song.album_id(), QString(), cover_url);
+  request.filename = CoverUtils::CoverFilePath(CoverOptions(), song.source(), song.effective_albumartist(), song.effective_album(), song.album_id(), QString(), cover_url);
   if (request.filename.isEmpty()) return;
 
   album_covers_requests_sent_.insert(cover_url, song.song_id());
@@ -1349,7 +1352,7 @@ void QobuzRequest::AlbumCoverReceived(QNetworkReply *reply, const QUrl &cover_ur
     return;
   }
 
-  QList<QByteArray> format_list = ImageUtils::ImageFormatsForMimeType(mimetype.toUtf8());
+  QByteArrayList format_list = ImageUtils::ImageFormatsForMimeType(mimetype.toUtf8());
   char *format = nullptr;
   if (!format_list.isEmpty()) {
     format = format_list.first().data();
