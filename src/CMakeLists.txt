@@ -55,11 +55,14 @@ set(SOURCES
   utilities/transliterate.cpp
   utilities/xmlutils.cpp
   utilities/filemanagerutils.cpp
+  utilities/coverutils.cpp
+  utilities/screenutils.cpp
 
-  engine/enginetype.cpp
   engine/enginebase.cpp
+  engine/enginedevice.cpp
   engine/devicefinders.cpp
   engine/devicefinder.cpp
+  engine/enginemetadata.cpp
 
   analyzer/fht.cpp
   analyzer/analyzerbase.cpp
@@ -144,6 +147,7 @@ set(SOURCES
   covermanager/albumcovermanager.cpp
   covermanager/albumcovermanagerlist.cpp
   covermanager/albumcoverloader.cpp
+  covermanager/albumcoverloaderoptions.cpp
   covermanager/albumcoverfetcher.cpp
   covermanager/albumcoverfetchersearch.cpp
   covermanager/albumcoversearcher.cpp
@@ -178,7 +182,7 @@ set(SOURCES
   lyrics/geniuslyricsprovider.cpp
   lyrics/musixmatchlyricsprovider.cpp
   lyrics/chartlyricsprovider.cpp
-  lyrics/stands4lyricsprovider.cpp
+  lyrics/lyricscomlyricsprovider.cpp
 
   providers/musixmatchprovider.cpp
 
@@ -205,6 +209,7 @@ set(SOURCES
   dialogs/userpassdialog.cpp
   dialogs/deleteconfirmationdialog.cpp
   dialogs/lastfmimportdialog.cpp
+  dialogs/messagedialog.cpp
   dialogs/snapdialog.cpp
   dialogs/saveplaylistsdialog.cpp
 
@@ -264,10 +269,10 @@ set(SOURCES
   radios/radioparadiseservice.cpp
 
   scrobbler/audioscrobbler.cpp
-  scrobbler/scrobblerservices.cpp
   scrobbler/scrobblerservice.cpp
   scrobbler/scrobblercache.cpp
   scrobbler/scrobblercacheitem.cpp
+  scrobbler/scrobblemetadata.cpp
   scrobbler/scrobblingapi20.cpp
   scrobbler/lastfmscrobbler.cpp
   scrobbler/librefmscrobbler.cpp
@@ -414,7 +419,7 @@ set(HEADERS
   lyrics/geniuslyricsprovider.h
   lyrics/musixmatchlyricsprovider.h
   lyrics/chartlyricsprovider.h
-  lyrics/stands4lyricsprovider.h
+  lyrics/lyricscomlyricsprovider.h
 
   settings/settingsdialog.h
   settings/settingspage.h
@@ -439,6 +444,7 @@ set(HEADERS
   dialogs/userpassdialog.h
   dialogs/deleteconfirmationdialog.h
   dialogs/lastfmimportdialog.h
+  dialogs/messagedialog.h
   dialogs/snapdialog.h
   dialogs/saveplaylistsdialog.h
 
@@ -496,10 +502,8 @@ set(HEADERS
   radios/radioparadiseservice.h
 
   scrobbler/audioscrobbler.h
-  scrobbler/scrobblerservices.h
   scrobbler/scrobblerservice.h
   scrobbler/scrobblercache.h
-  scrobbler/scrobblercacheitem.h
   scrobbler/scrobblingapi20.h
   scrobbler/lastfmscrobbler.h
   scrobbler/librefmscrobbler.h
@@ -566,7 +570,7 @@ set(UI
   dialogs/addstreamdialog.ui
   dialogs/userpassdialog.ui
   dialogs/lastfmimportdialog.ui
-  dialogs/snapdialog.ui
+  dialogs/messagedialog.ui
   dialogs/saveplaylistsdialog.ui
 
   widgets/trackslider.ui
@@ -834,6 +838,7 @@ optional_source(WIN32
   HEADERS
     core/windows7thumbbar.h
 )
+optional_source(MSVC SOURCES engine/uwpdevicefinder.cpp)
 
 optional_source(HAVE_SUBSONIC
   SOURCES
@@ -968,7 +973,6 @@ link_directories(
   ${SQLITE_LIBRARY_DIRS}
   ${PROTOBUF_LIBRARY_DIRS}
   ${SINGLEAPPLICATION_LIBRARY_DIRS}
-  ${SINGLECOREAPPLICATION_LIBRARY_DIRS}
 )
 
 if(HAVE_ICU)
@@ -1076,7 +1080,6 @@ target_include_directories(strawberry_lib PUBLIC
   ${CMAKE_SOURCE_DIR}/ext/libstrawberry-tagreader
   ${CMAKE_BINARY_DIR}/ext/libstrawberry-tagreader
   ${SINGLEAPPLICATION_INCLUDE_DIRS}
-  ${SINGLECOREAPPLICATION_INCLUDE_DIRS}
 )
 
 target_link_libraries(strawberry_lib PUBLIC
@@ -1088,7 +1091,6 @@ target_link_libraries(strawberry_lib PUBLIC
   ${QT_LIBRARIES}
   ${Protobuf_LIBRARIES}
   ${SINGLEAPPLICATION_LIBRARIES}
-  ${SINGLECOREAPPLICATION_LIBRARIES}
   libstrawberry-common
   libstrawberry-tagreader
 )
@@ -1198,13 +1200,13 @@ endif()
 if(WIN32)
   target_link_libraries(strawberry_lib PRIVATE dsound dwmapi)
   if(MSVC)
-    target_link_libraries(strawberry_lib PRIVATE sqlite3)
-    if (GETOPT_INCLUDE_DIRS)
-      target_include_directories(strawberry_lib SYSTEM PRIVATE ${GETOPT_INCLUDE_DIRS})
-    endif()
-    if(GETOPT_LIBRARIES)
-      target_link_libraries(strawberry_lib PRIVATE ${GETOPT_LIBRARIES})
-    endif()
+    target_link_libraries(strawberry_lib PRIVATE WindowsApp)
+  endif()
+  if(GETOPT_INCLUDE_DIRS)
+    target_include_directories(strawberry_lib SYSTEM PRIVATE ${GETOPT_INCLUDE_DIRS})
+  endif()
+  if(GETOPT_LIBRARIES)
+    target_link_libraries(strawberry_lib PRIVATE ${GETOPT_LIBRARIES})
   endif()
 endif()
 

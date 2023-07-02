@@ -51,7 +51,6 @@
 #include "tagreaderclient.h"
 #include "database.h"
 #include "sqlrow.h"
-#include "engine/enginetype.h"
 #include "engine/enginebase.h"
 #include "collection/collectionbackend.h"
 #include "collection/collectionquery.h"
@@ -68,15 +67,19 @@ const int SongLoader::kDefaultTimeout = 5000;
 
 SongLoader::SongLoader(CollectionBackendInterface *collection, const Player *player, QObject *parent)
     : QObject(parent),
+      player_(player),
+      collection_(collection),
       timeout_timer_(new QTimer(this)),
       playlist_parser_(new PlaylistParser(collection, this)),
       cue_parser_(new CueParser(collection, this)),
-      timeout_(kDefaultTimeout),
-      state_(State::WaitingForType),
-      success_(false),
       parser_(nullptr),
-      collection_(collection),
-      player_(player) {
+      state_(State::WaitingForType),
+      timeout_(kDefaultTimeout),
+#ifdef HAVE_GSTREAMER
+      fakesink_(nullptr),
+      buffer_probe_cb_id_(0),
+#endif
+      success_(false) {
 
   if (sRawUriSchemes.isEmpty()) {
     sRawUriSchemes << "udp"
@@ -99,10 +102,7 @@ SongLoader::SongLoader(CollectionBackendInterface *collection, const Player *pla
 SongLoader::~SongLoader() {
 
 #ifdef HAVE_GSTREAMER
-  if (pipeline_) {
-    state_ = State::Finished;
-    gst_element_set_state(pipeline_.get(), GST_STATE_NULL);
-  }
+  CleanupPipeline();
 #endif
 
 }
@@ -124,13 +124,13 @@ SongLoader::Result SongLoader::Load(const QUrl &url) {
     return Result::Success;
   }
 
-  if (player_->engine()->type() == Engine::EngineType::GStreamer) {
+  if (player_->engine()->type() == EngineBase::Type::GStreamer) {
 #ifdef HAVE_GSTREAMER
     preload_func_ = std::bind(&SongLoader::LoadRemote, this);
     return Result::BlockingLoadRequired;
 #else
     errors_ << tr("You need GStreamer for this URL.");
-    return Error;
+    return Result::Error;
 #endif
   }
   else {
@@ -189,7 +189,7 @@ SongLoader::Result SongLoader::LoadLocalPartial(const QString &filename) {
 SongLoader::Result SongLoader::LoadAudioCD() {
 
 #if defined(HAVE_AUDIOCD) && defined(HAVE_GSTREAMER)
-  if (player_->engine()->type() == Engine::EngineType::GStreamer) {
+  if (player_->engine()->type() == EngineBase::Type::GStreamer) {
     CddaSongLoader *cdda_song_loader = new CddaSongLoader(QUrl(), this);
     QObject::connect(cdda_song_loader, &CddaSongLoader::SongsDurationLoaded, this, &SongLoader::AudioCDTracksLoadFinishedSlot);
     QObject::connect(cdda_song_loader, &CddaSongLoader::SongsMetadataLoaded, this, &SongLoader::AudioCDTracksTagsLoaded);
@@ -417,9 +417,11 @@ void SongLoader::AddAsRawStream() {
 }
 
 void SongLoader::Timeout() {
+
   state_ = State::Finished;
   success_ = false;
   StopTypefind();
+
 }
 
 void SongLoader::StopTypefind() {
@@ -428,7 +430,7 @@ void SongLoader::StopTypefind() {
   // Destroy the pipeline
   if (pipeline_) {
     gst_element_set_state(pipeline_.get(), GST_STATE_NULL);
-    pipeline_.reset();
+    CleanupPipeline();
   }
 #endif
   timeout_timer_->stop();
@@ -477,33 +479,52 @@ SongLoader::Result SongLoader::LoadRemote() {
     errors_ << tr("Couldn't create GStreamer source element for %1").arg(url_.toString());
     return Result::Error;
   }
+  gst_bin_add(GST_BIN(pipeline.get()), source);
+
   g_object_set(source, "ssl-strict", FALSE, nullptr);
 
   // Create the other elements and link them up
   GstElement *typefind = gst_element_factory_make("typefind", nullptr);
-  GstElement *fakesink = gst_element_factory_make("fakesink", nullptr);
+  if (!typefind) {
+    errors_ << tr("Couldn't create GStreamer typefind element for %1").arg(url_.toString());
+    return Result::Error;
+  }
+  gst_bin_add(GST_BIN(pipeline.get()), typefind);
 
-  gst_bin_add_many(GST_BIN(pipeline.get()), source, typefind, fakesink, nullptr);
-  gst_element_link_many(source, typefind, fakesink, nullptr);
+  fakesink_ = gst_element_factory_make("fakesink", nullptr);
+  if (!fakesink_) {
+    errors_ << tr("Couldn't create GStreamer fakesink element for %1").arg(url_.toString());
+    return Result::Error;
+  }
+  gst_bin_add(GST_BIN(pipeline.get()), fakesink_);
+
+  if (!gst_element_link_many(source, typefind, fakesink_, nullptr)) {
+    errors_ << tr("Couldn't link GStreamer source, typefind and fakesink elements for %1").arg(url_.toString());
+    return Result::Error;
+  }
 
   // Connect callbacks
-  GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline.get()));
   CHECKED_GCONNECT(typefind, "have-type", &TypeFound, this);
-  gst_bus_set_sync_handler(bus, BusCallbackSync, this, nullptr);
-  gst_bus_add_watch(bus, BusCallback, this);
-  gst_object_unref(bus);
+  GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline.get()));
+  if (bus) {
+    gst_bus_set_sync_handler(bus, BusCallbackSync, this, nullptr);
+    gst_bus_add_watch(bus, BusWatchCallback, this);
+    gst_object_unref(bus);
+  }
 
   // Add a probe to the sink so we can capture the data if it's a playlist
-  GstPad *pad = gst_element_get_static_pad(fakesink, "sink");
-  gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &DataReady, this, nullptr);
-  gst_object_unref(pad);
+  GstPad *pad = gst_element_get_static_pad(fakesink_, "sink");
+  if (pad) {
+    buffer_probe_cb_id_ = gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &DataReady, this, nullptr);
+    gst_object_unref(pad);
+  }
 
   QEventLoop loop;
   loop.connect(this, &SongLoader::LoadRemoteFinished, &loop, &QEventLoop::quit);
 
   // Start "playing"
-  gst_element_set_state(pipeline.get(), GST_STATE_PLAYING);
   pipeline_ = pipeline;
+  gst_element_set_state(pipeline.get(), GST_STATE_PLAYING);
 
   // Wait until loading is finished
   loop.exec();
@@ -563,7 +584,7 @@ GstPadProbeReturn SongLoader::DataReady(GstPad*, GstPadProbeInfo *info, gpointer
 #endif
 
 #ifdef HAVE_GSTREAMER
-gboolean SongLoader::BusCallback(GstBus*, GstMessage *msg, gpointer self) {
+gboolean SongLoader::BusWatchCallback(GstBus*, GstMessage *msg, gpointer self) {
 
   SongLoader *instance = reinterpret_cast<SongLoader*>(self);
 
@@ -633,6 +654,7 @@ void SongLoader::ErrorMessageReceived(GstMessage *msg) {
 void SongLoader::EndOfStreamReached() {
 
   qLog(Debug) << Q_FUNC_INFO << static_cast<int>(state_);
+
   switch (state_) {
     case State::Finished:
       break;
@@ -661,6 +683,7 @@ void SongLoader::EndOfStreamReached() {
 void SongLoader::MagicReady() {
 
   qLog(Debug) << Q_FUNC_INFO;
+
   parser_ = playlist_parser_->ParserForMagic(buffer_, mime_type_);
 
   if (!parser_) {
@@ -673,6 +696,7 @@ void SongLoader::MagicReady() {
   // We'll get more data and parse the whole thing in EndOfStreamReached
 
   qLog(Debug) << "Magic says" << parser_->name();
+
   if (parser_->name() == "ASX/INI" && url_.scheme() == "http") {
     // This is actually a weird MS-WMSP stream. Changing the protocol to MMS from HTTP makes it playable.
     parser_ = nullptr;
@@ -706,16 +730,15 @@ bool SongLoader::IsPipelinePlaying() {
 #endif
 
 #ifdef HAVE_GSTREAMER
-void SongLoader::StopTypefindAsync(bool success) {
+void SongLoader::StopTypefindAsync(const bool success) {
 
   state_ = State::Finished;
   success_ = success;
 
-  QMetaObject::invokeMethod(this, "StopTypefind", Qt::QueuedConnection);
+  QMetaObject::invokeMethod(this, &SongLoader::StopTypefind, Qt::QueuedConnection);
 
 }
 #endif
-
 
 void SongLoader::ScheduleTimeoutAsync() {
 
@@ -723,7 +746,7 @@ void SongLoader::ScheduleTimeoutAsync() {
     ScheduleTimeout();
   }
   else {
-    QMetaObject::invokeMethod(this, "ScheduleTimeout", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, &SongLoader::ScheduleTimeout, Qt::QueuedConnection);
   }
 
 }
@@ -733,3 +756,38 @@ void SongLoader::ScheduleTimeout() {
   timeout_timer_->start(timeout_);
 
 }
+
+#ifdef HAVE_GSTREAMER
+
+void SongLoader::CleanupPipeline() {
+
+  if (pipeline_) {
+
+    gst_element_set_state(pipeline_.get(), GST_STATE_NULL);
+
+    if (fakesink_ && buffer_probe_cb_id_ != 0) {
+      GstPad *pad = gst_element_get_static_pad(fakesink_, "src");
+      if (pad) {
+        gst_pad_remove_probe(pad, buffer_probe_cb_id_);
+        gst_object_unref(pad);
+      }
+    }
+
+    {
+      GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_.get()));
+      if (bus) {
+        gst_bus_remove_watch(bus);
+        gst_bus_set_sync_handler(bus, nullptr, nullptr, nullptr);
+        gst_object_unref(bus);
+      }
+    }
+
+    pipeline_.reset();
+
+  }
+
+  state_ = State::Finished;
+
+}
+
+#endif

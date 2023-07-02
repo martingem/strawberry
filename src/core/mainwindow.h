@@ -52,8 +52,7 @@
 #include "platforminterface.h"
 #include "song.h"
 #include "tagreaderclient.h"
-#include "engine/enginetype.h"
-#include "engine/engine_fwd.h"
+#include "engine/enginebase.h"
 #include "osd/osdbase.h"
 #include "collection/collectionmodel.h"
 #include "playlist/playlist.h"
@@ -132,17 +131,17 @@ class MainWindow : public QMainWindow, public PlatformInterface {
   bool LoadUrl(const QString &url) override;
 
  signals:
-  void AlbumCoverReady(Song song, QImage image);
+  void AlbumCoverReady(const Song &song, const QImage &image);
   void SearchCoverInProgress();
   // Signals that stop playing after track was toggled.
-  void StopAfterToggled(bool stop);
+  void StopAfterToggled(const bool stop);
 
-  void AuthorizationUrlReceived(QUrl url);
+  void AuthorizationUrlReceived(const QUrl &url);
 
  private slots:
   void FilePathChanged(const QString &path);
 
-  void EngineChanged(Engine::EngineType enginetype);
+  void EngineChanged(const EngineBase::Type enginetype);
   void MediaStopped();
   void MediaPaused();
   void MediaPlaying();
@@ -273,7 +272,7 @@ class MainWindow : public QMainWindow, public PlatformInterface {
   void FocusSearchField();
 
  public slots:
-  void CommandlineOptionsReceived(const quint32 instanceId, const QByteArray &string_options);
+  void CommandlineOptionsReceived(const QByteArray &string_options);
   void Raise();
 
  private:

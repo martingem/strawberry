@@ -84,8 +84,8 @@ void GstStartup::InitializeGStreamer() {
   gstfastspectrum_register_static();
 #endif
 
-#ifdef Q_OS_WIN32
-  // Use directsoundsink by default because of buggy wasapi plugin.
+#if defined(Q_OS_WIN32) && defined(__MINGW32__)
+  // MinGW does not have wasapi2sink and wasapisink does not support device switching, so use directsoundsink as the default sink.
   GstRegistry *reg = gst_registry_get();
   if (reg) {
     GstPluginFeature *directsoundsink = gst_registry_lookup_feature(reg, "directsoundsink");

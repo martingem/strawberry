@@ -49,13 +49,13 @@ const char *ContextSettingsPage::kSettingsSummaryFmt = "SummaryFmt";
 
 const char *ContextSettingsPage::kSettingsGroupEnable[static_cast<int>(ContextSettingsOrder::NELEMS)] = {
   "AlbumEnable",
-  "EngineAndDeviceEnable",
   "TechnicalDataEnable",
   "SongLyricsEnable",
   "SearchCoverEnable",
   "SearchLyricsEnable",
 };
 
+const char ContextSettingsPage::kDefaultFontFamily[] = "Noto Sans";
 const qreal ContextSettingsPage::kDefaultFontSizeHeadline = 11;
 
 ContextSettingsPage::ContextSettingsPage(SettingsDialog *dialog, QWidget *parent)
@@ -66,7 +66,6 @@ ContextSettingsPage::ContextSettingsPage(SettingsDialog *dialog, QWidget *parent
   setWindowIcon(IconLoader::Load("view-choose", true, 0, 32));
 
   checkboxes_[static_cast<int>(ContextSettingsOrder::ALBUM)] = ui_->checkbox_album;
-  checkboxes_[static_cast<int>(ContextSettingsOrder::ENGINE_AND_DEVICE)] = ui_->checkbox_engine_device;
   checkboxes_[static_cast<int>(ContextSettingsOrder::TECHNICAL_DATA)] = ui_->checkbox_technical_data;
   checkboxes_[static_cast<int>(ContextSettingsOrder::SONG_LYRICS)] = ui_->checkbox_song_lyrics;
   checkboxes_[static_cast<int>(ContextSettingsOrder::SEARCH_COVER)] = ui_->checkbox_search_cover;
@@ -141,12 +140,12 @@ void ContextSettingsPage::Load() {
 
   // Fonts
   QString default_font;
-  int i = ui_->font_headline->findText("Noto Sans");
+  int i = ui_->font_headline->findText(kDefaultFontFamily);
   if (i >= 0) {
-    default_font = "Noto Sans";
+    default_font = kDefaultFontFamily;
   }
   else {
-    default_font = QWidget().font().family();
+    default_font = font().family();
   }
   ui_->font_headline->setCurrentFont(s.value("font_headline", default_font).toString());
   ui_->font_normal->setCurrentFont(s.value("font_normal", default_font).toString());

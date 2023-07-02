@@ -1,6 +1,6 @@
 /*
  * Strawberry Music Player
- * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2023, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,10 +35,11 @@
 #include "core/song.h"
 #include "scrobblerservice.h"
 #include "scrobblercache.h"
+#include "scrobblemetadata.h"
 
 class QNetworkReply;
 
-class Application;
+class AudioScrobbler;
 class NetworkAccessManager;
 class LocalRedirectServer;
 
@@ -46,7 +47,7 @@ class ListenBrainzScrobbler : public ScrobblerService {
   Q_OBJECT
 
  public:
-  explicit ListenBrainzScrobbler(Application *app, QObject *parent = nullptr);
+  explicit ListenBrainzScrobbler(AudioScrobbler *scrobbler, NetworkAccessManager *network, QObject *parent = nullptr);
   ~ListenBrainzScrobbler() override;
 
   static const char *kName;
@@ -68,9 +69,16 @@ class ListenBrainzScrobbler : public ScrobblerService {
   void UpdateNowPlaying(const Song &song) override;
   void ClearPlaying() override;
   void Scrobble(const Song &song) override;
+  void Love() override;
+
+  enum class ReplyResult {
+    Success,
+    ServerError,
+    APIError
+  };
 
  signals:
-  void AuthenticationComplete(bool success, QString error = QString());
+  void AuthenticationComplete(const bool success, const QString &error = QString());
 
  public slots:
   void WriteCache() override { cache_->WriteCache(); }
@@ -80,14 +88,15 @@ class ListenBrainzScrobbler : public ScrobblerService {
   void AuthenticateReplyFinished(QNetworkReply *reply);
   void RequestNewAccessToken() { RequestAccessToken(); }
   void UpdateNowPlayingRequestFinished(QNetworkReply *reply);
-  void ScrobbleRequestFinished(QNetworkReply *reply, const QList<quint64> &list);
+  void ScrobbleRequestFinished(QNetworkReply *reply, ScrobblerCacheItemPtrList cache_items);
+  void LoveRequestFinished(QNetworkReply *reply);
 
  private:
   QNetworkReply *CreateRequest(const QUrl &url, const QJsonDocument &json_doc);
-  QByteArray GetReplyData(QNetworkReply *reply);
-
+  ReplyResult GetJsonObject(QNetworkReply *reply, QJsonObject &json_obj, QString &error_description);
+  QJsonObject JsonTrackMetadata(const ScrobbleMetadata &metadata) const;
   void AuthError(const QString &error);
-  void Error(const QString &error, const QVariant &debug = QVariant()) override;
+  void Error(const QString &error, const QVariant &debug = QVariant());
   void RequestAccessToken(const QUrl &redirect_url = QUrl(), const QString &code = QString());
   void StartSubmit(const bool initial = false) override;
   void CheckScrobblePrevSong();
@@ -101,7 +110,7 @@ class ListenBrainzScrobbler : public ScrobblerService {
   static const char *kCacheFile;
   static const int kScrobblesPerRequest;
 
-  Application *app_;
+  AudioScrobbler *scrobbler_;
   NetworkAccessManager *network_;
   ScrobblerCache *cache_;
   LocalRedirectServer *server_;

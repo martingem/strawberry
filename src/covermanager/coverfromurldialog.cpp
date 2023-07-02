@@ -38,7 +38,10 @@
 #include "coverfromurldialog.h"
 #include "ui_coverfromurldialog.h"
 
-CoverFromURLDialog::CoverFromURLDialog(QWidget *parent) : QDialog(parent), ui_(new Ui_CoverFromURLDialog), network_(new NetworkAccessManager(this)) {
+CoverFromURLDialog::CoverFromURLDialog(NetworkAccessManager *network, QWidget *parent)
+    : QDialog(parent),
+      network_(network),
+      ui_(new Ui_CoverFromURLDialog) {
 
   ui_->setupUi(this);
   ui_->busy->hide();
@@ -92,12 +95,12 @@ void CoverFromURLDialog::LoadCoverFromURLFinished() {
   result.image.loadFromData(result.image_data);
   result.mime_type = Utilities::MimeTypeFromData(result.image_data);
 
-  if (!result.image.isNull()) {
-    last_album_cover_ = result;
-    QDialog::accept();
+  if (result.image.isNull()) {
+    QMessageBox::information(this, tr("Fetching cover error"), tr("The site you requested is not an image!"));
   }
   else {
-    QMessageBox::information(this, tr("Fetching cover error"), tr("The site you requested is not an image!"));
+    last_album_cover_ = result;
+    QDialog::accept();
   }
 
 }

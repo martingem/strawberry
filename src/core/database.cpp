@@ -48,7 +48,7 @@
 #include "scopedtransaction.h"
 
 const char *Database::kDatabaseFilename = "strawberry.db";
-const int Database::kSchemaVersion = 15;
+const int Database::kSchemaVersion = 17;
 const int Database::kMinSupportedSchemaVersion = 10;
 const char *Database::kMagicAllSongsTables = "%allsongstables";
 
@@ -91,7 +91,7 @@ Database::~Database() {
 }
 
 void Database::ExitAsync() {
-  QMetaObject::invokeMethod(this, "Exit", Qt::QueuedConnection);
+  QMetaObject::invokeMethod(this, &Database::Exit, Qt::QueuedConnection);
 }
 
 void Database::Exit() {
@@ -472,12 +472,10 @@ void Database::ReportErrors(const SqlQuery &query) {
 
   const QSqlError sql_error = query.lastError();
   if (sql_error.isValid()) {
-    qLog(Error) << "Unable to execute SQL query: " << sql_error;
-    qLog(Error) << "Failed query: " << query.LastQuery();
-    QString error;
-    error += "Unable to execute SQL query: " + sql_error.text() + "<br />";
-    error += "Failed query: " + query.LastQuery();
-    emit Error(error);
+    qLog(Error) << "Unable to execute SQL query:" << sql_error;
+    qLog(Error) << "Failed SQL query:" << query.LastQuery();
+    emit Error(tr("Unable to execute SQL query: %1").arg(sql_error.text()));
+    emit Error(tr("Failed SQL query: %1").arg(query.LastQuery()));
   }
 
 }
@@ -488,11 +486,11 @@ bool Database::IntegrityCheck(const QSqlDatabase &db) {
   const int task_id = app_->task_manager()->StartTask(tr("Integrity check"));
 
   bool ok = false;
-  bool error_reported = false;
   // Ask for 10 error messages at most.
   SqlQuery q(db);
   q.prepare("PRAGMA integrity_check(10)");
   if (q.Exec()) {
+    bool error_reported = false;
     while (q.next()) {
       QString message = q.value(0).toString();
 

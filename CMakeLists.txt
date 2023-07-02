@@ -117,9 +117,14 @@ else()
   find_package(Iconv)
 endif()
 find_package(GnuTLS REQUIRED)
-find_package(Protobuf REQUIRED)
-if(NOT Protobuf_PROTOC_EXECUTABLE)
-  message(FATAL_ERROR "Missing protobuf compiler.")
+if(NOT APPLE)
+  find_package(Protobuf CONFIG)
+endif()
+if(NOT Protobuf_FOUND)
+  find_package(Protobuf REQUIRED)
+endif()
+if(NOT TARGET protobuf::protoc)
+  message(FATAL_ERROR "Missing Protobuf compiler.")
 endif()
 if(LINUX)
   find_package(ALSA REQUIRED)
@@ -179,7 +184,7 @@ if(DBUS_FOUND AND NOT WIN32)
   list(APPEND QT_COMPONENTS DBus)
 endif()
 set(QT_OPTIONAL_COMPONENTS Test)
-set(QT_MIN_VERSION 5.9)
+set(QT_MIN_VERSION 5.12)
 
 if(BUILD_WITH_QT6 OR QT_VERSION_MAJOR EQUAL 6)
   set(QT_VERSION_MAJOR 6 CACHE STRING "" FORCE)
@@ -276,6 +281,24 @@ if(X11_FOUND)
   else()
     message(STATUS "Missing qpa/qplatformnativeinterface.h header.")
   endif()
+
+  # Check for QX11Application (Qt 6 compiled with XCB).
+  if(BUILD_WITH_QT6 AND Qt6Gui_VERSION VERSION_GREATER_EQUAL 6.2.0)
+    set(CMAKE_REQUIRED_FLAGS "-std=c++17")
+    set(CMAKE_REQUIRED_LIBRARIES ${QtCore_LIBRARIES} ${QtGui_LIBRARIES})
+    check_cxx_source_compiles("
+    #include <QGuiApplication>
+    int main() {
+      (void)qApp->nativeInterface<QNativeInterface::QX11Application>();
+      return 0;
+    }
+    "
+      HAVE_QX11APPLICATION
+      )
+    unset(CMAKE_REQUIRED_FLAGS)
+    unset(CMAKE_REQUIRED_LIBRARIES)
+  endif()
+
 endif(X11_FOUND)
 
 option(USE_TAGLIB "Build with TagLib" OFF)
@@ -310,13 +333,10 @@ if(NOT TAGLIB_FOUND AND NOT TAGPARSER_FOUND)
 endif()
 
 # SingleApplication
-add_subdirectory(3rdparty/singleapplication)
-set(SINGLEAPPLICATION_INCLUDE_DIRS
-  ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/singleapplication/singleapplication
-  ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/singleapplication/singlecoreapplication
-)
-set(SINGLEAPPLICATION_LIBRARIES singleapplication)
-set(SINGLECOREAPPLICATION_LIBRARIES singlecoreapplication)
+add_subdirectory(3rdparty/kdsingleapplication)
+set(SINGLEAPPLICATION_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/kdsingleapplication)
+set(SINGLEAPPLICATION_LIBRARIES kdsingleapplication)
+add_definitions(-DKDSINGLEAPPLICATION_STATIC_BUILD)
 
 if(APPLE)
   add_subdirectory(3rdparty/SPMediaKeyTap)
@@ -337,10 +357,11 @@ if(WIN32)
   endif()
 endif()
 
-if(WIN32 AND MSVC)
+if(WIN32)
   add_subdirectory(3rdparty/getopt)
   set(GETOPT_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/getopt)
   set(GETOPT_LIBRARIES getopt)
+  add_definitions(-DSTATIC_GETOPT -D_UNICODE)
 endif()
 
 if(WIN32 AND NOT MSVC)
@@ -381,12 +402,12 @@ optional_component(VLC ON "Engine: VLC backend"
 
 optional_component(SONGFINGERPRINTING ON "Song fingerprinting and tracking"
   DEPENDS "chromaprint" CHROMAPRINT_FOUND
-  DEPENDS "gstreamer" GSTREAMER_FOUND
+  DEPENDS "gstreamer" HAVE_GSTREAMER
 )
 
 optional_component(MUSICBRAINZ ON "MusicBrainz integration"
   DEPENDS "chromaprint" CHROMAPRINT_FOUND
-  DEPENDS "gstreamer" GSTREAMER_FOUND
+  DEPENDS "gstreamer" HAVE_GSTREAMER
 )
 
 if(X11_FOUND OR HAVE_DBUS OR APPLE OR WIN32)
@@ -397,21 +418,17 @@ optional_component(GLOBALSHORTCUTS ON "Global shortcuts"
   DEPENDS "D-Bus, X11, Windows or macOS" HAVE_GLOBALSHORTCUTS_SUPPORT
 )
 
-if(BUILD_WITH_QT6 AND (Qt6Core_VERSION VERSION_EQUAL 6.2.0 OR Qt6Core_VERSION VERSION_GREATER 6.2.0))
-  optional_component(X11_GLOBALSHORTCUTS ON "X11 global shortcuts" DEPENDS "X11" X11_FOUND)
-else()
-  if(HAVE_X11EXTRAS OR HAVE_QPA_QPLATFORMNATIVEINTERFACE_H)
-    set(HAVE_X11EXTRAS_OR_QPA_QPLATFORMNATIVEINTERFACE_H ON)
-  endif()
-  optional_component(X11_GLOBALSHORTCUTS ON "X11 global shortcuts"
-    DEPENDS "X11" X11_FOUND
-    DEPENDS "Qt >= 6.2, X11Extras or qpa/qplatformnativeinterface.h header" HAVE_X11EXTRAS_OR_QPA_QPLATFORMNATIVEINTERFACE_H
-  )
+if(HAVE_QX11APPLICATION OR HAVE_X11EXTRAS OR HAVE_QPA_QPLATFORMNATIVEINTERFACE_H)
+  set(X11_GLOBALSHORTCUTS_REQUIREMENT_FOUND ON)
 endif()
+optional_component(X11_GLOBALSHORTCUTS ON "X11 global shortcuts"
+  DEPENDS "X11" X11_FOUND
+  DEPENDS "QX11Application, X11Extras or qpa/qplatformnativeinterface.h header" X11_GLOBALSHORTCUTS_REQUIREMENT_FOUND
+)
 
 optional_component(AUDIOCD ON "Devices: Audio CD support"
   DEPENDS "libcdio" LIBCDIO_FOUND
-  DEPENDS "gstreamer" GSTREAMER_FOUND
+  DEPENDS "gstreamer" HAVE_GSTREAMER
 )
 
 optional_component(UDISKS2 ON "Devices: UDisks2 backend"
@@ -510,6 +527,8 @@ if(NOT CMAKE_CROSSCOMPILING)
       SQLITE_FTS5_TEST
     )
   endif()
+  unset(CMAKE_REQUIRED_FLAGS)
+  unset(CMAKE_REQUIRED_LIBRARIES)
 endif()
 
 # Set up definitions

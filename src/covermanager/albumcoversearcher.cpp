@@ -90,11 +90,7 @@ void SizeOverlayDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
 
   const QFontMetrics metrics(font);
 
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 11, 0))
   const int text_width = metrics.horizontalAdvance(text);
-#else
-  const int text_width = metrics.width(text);
-#endif
 
   const QRect icon_rect(option.rect.left(), option.rect.top(), option.rect.width(), option.rect.width());
 
@@ -131,14 +127,6 @@ AlbumCoverSearcher::AlbumCoverSearcher(const QIcon &no_cover_icon, Application *
   ui_->covers->AddSortSpec(Role_ImageDimensions, Qt::DescendingOrder);
   ui_->covers->setItemDelegate(new SizeOverlayDelegate(this));
   ui_->covers->setModel(model_);
-
-  options_.get_image_data_ = true;
-  options_.get_image_ = true;
-  options_.scale_output_image_ = false;
-  options_.pad_output_image_ = false;
-  options_.create_thumbnail_ = true;
-  options_.pad_thumbnail_image_ = true;
-  options_.thumbnail_size_ = ui_->covers->iconSize();
 
   QObject::connect(app_->album_cover_loader(), &AlbumCoverLoader::AlbumCoverLoaded, this, &AlbumCoverSearcher::AlbumCoverLoaded);
   QObject::connect(ui_->search, &QPushButton::clicked, this, &AlbumCoverSearcher::Search);
@@ -226,7 +214,9 @@ void AlbumCoverSearcher::SearchFinished(const quint64 id, const CoverProviderSea
 
     if (result.image_url.isEmpty()) continue;
 
-    quint64 new_id = app_->album_cover_loader()->LoadImageAsync(options_, result.image_url, QUrl());
+    AlbumCoverLoaderOptions cover_options(AlbumCoverLoaderOptions::Option::RawImageData | AlbumCoverLoaderOptions::Option::OriginalImage | AlbumCoverLoaderOptions::Option::ScaledImage | AlbumCoverLoaderOptions::Option::PadScaledImage);
+    cover_options.desired_scaled_size = ui_->covers->iconSize(), ui_->covers->iconSize();
+    quint64 new_id = app_->album_cover_loader()->LoadImageAsync(cover_options, false, result.image_url, QUrl(), false);
 
     QStandardItem *item = new QStandardItem;
     item->setIcon(no_cover_icon_);
@@ -253,18 +243,18 @@ void AlbumCoverSearcher::AlbumCoverLoaded(const quint64 id, const AlbumCoverLoad
 
   if (cover_loading_tasks_.isEmpty()) ui_->busy->hide();
 
-  if (!result.success || result.album_cover.image_data.isNull() || result.album_cover.image.isNull() || result.image_thumbnail.isNull()) {
+  if (!result.success || result.album_cover.image_data.isNull() || result.album_cover.image.isNull() || result.image_scaled.isNull()) {
     model_->removeRow(item->row());
     return;
   }
 
-  QPixmap pixmap = QPixmap::fromImage(result.image_thumbnail);
+  const QPixmap pixmap = QPixmap::fromImage(result.image_scaled);
   if (pixmap.isNull()) {
     model_->removeRow(item->row());
     return;
   }
 
-  QIcon icon(pixmap);
+  const QIcon icon(pixmap);
 
   item->setData(true, Role_ImageFetchFinished);
   item->setData(result.album_cover.image_data, Role_ImageData);

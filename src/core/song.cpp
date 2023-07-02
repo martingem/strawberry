@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
- * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2023, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,21 +48,16 @@
 #include <QStandardPaths>
 
 #include "core/iconloader.h"
-
-#include "engine/enginebase.h"
+#include "engine/enginemetadata.h"
 #include "utilities/strutils.h"
 #include "utilities/timeutils.h"
-#include "utilities/cryptutils.h"
+#include "utilities/coverutils.h"
 #include "utilities/timeconstants.h"
 #include "song.h"
-#include "application.h"
 #include "sqlquery.h"
 #include "mpris_common.h"
 #include "sqlrow.h"
 #include "tagreadermessages.pb.h"
-
-#define QStringFromStdString(x) QString::fromUtf8((x).data(), (x).size())
-#define DataCommaSizeFromQString(x) (x).toUtf8().constData(), (x).toUtf8().length()
 
 const QStringList Song::kColumns = QStringList() << "title"
                                                  << "album"
@@ -112,8 +107,10 @@ const QStringList Song::kColumns = QStringList() << "title"
                                                  << "compilation_off"
                                                  << "compilation_effective"
 
+                                                 << "art_embedded"
                                                  << "art_automatic"
                                                  << "art_manual"
+                                                 << "art_unset"
 
                                                  << "effective_albumartist"
                                                  << "effective_originalyear"
@@ -121,6 +118,20 @@ const QStringList Song::kColumns = QStringList() << "title"
                                                  << "cue_path"
 
                                                  << "rating"
+
+                                                 << "acoustid_id"
+                                                 << "acoustid_fingerprint"
+
+                                                 << "musicbrainz_album_artist_id"
+                                                 << "musicbrainz_artist_id"
+                                                 << "musicbrainz_original_artist_id"
+                                                 << "musicbrainz_album_id"
+                                                 << "musicbrainz_original_album_id"
+                                                 << "musicbrainz_recording_id"
+                                                 << "musicbrainz_track_id"
+                                                 << "musicbrainz_disc_id"
+                                                 << "musicbrainz_release_group_id"
+                                                 << "musicbrainz_work_id"
 
 						 ;
 
@@ -142,9 +153,6 @@ const QString Song::kFtsColumnSpec = Song::kFtsColumns.join(", ");
 const QString Song::kFtsBindSpec = Utilities::Prepend(":", Song::kFtsColumns).join(", ");
 const QString Song::kFtsUpdateSpec = Utilities::Updateify(Song::kFtsColumns).join(", ");
 
-const QString Song::kManuallyUnsetCover = "(unset)";
-const QString Song::kEmbeddedCover = "(embedded)";
-
 const QRegularExpression Song::kAlbumRemoveDisc(" ?-? ((\\(|\\[)?)(Disc|CD) ?([0-9]{1,2})((\\)|\\])?)$", QRegularExpression::CaseInsensitiveOption);
 const QRegularExpression Song::kAlbumRemoveMisc(" ?-? ((\\(|\\[)?)(Remastered|([0-9]{1,4}) *Remaster|Explicit) ?((\\)|\\])?)$", QRegularExpression::CaseInsensitiveOption);
 const QRegularExpression Song::kTitleRemoveMisc(" ?-? ((\\(|\\[)?)(Remastered|Remastered Version|([0-9]{1,4}) *Remaster) ?((\\)|\\])?)$", QRegularExpression::CaseInsensitiveOption);
@@ -160,17 +168,14 @@ struct Song::Private : public QSharedData {
 
   explicit Private(Source source = Source::Unknown);
 
-  bool valid_;
   int id_;
 
+  bool valid_;
+
   QString title_;
-  QString title_sortable_;
   QString album_;
-  QString album_sortable_;
   QString artist_;
-  QString artist_sortable_;
   QString albumartist_;
-  QString albumartist_sortable_;
   int track_;
   int disc_;
   int year_;
@@ -215,23 +220,44 @@ struct Song::Private : public QSharedData {
   bool compilation_on_;         // Set by the user
   bool compilation_off_;        // Set by the user
 
-  // Filenames to album art for this song.
-  QUrl art_automatic_;          // Guessed by CollectionWatcher
-  QUrl art_manual_;             // Set by the user - should take priority
+  bool art_embedded_;           // if the song has embedded album cover art.
+  QUrl art_automatic_;          // Guessed by CollectionWatcher.
+  QUrl art_manual_;             // Set by the user - should take priority.
+  bool art_unset_;              // If the art was unset by the user.
 
   QString cue_path_;            // If the song has a CUE, this contains it's path.
 
   float rating_;                // Database rating, initial rating read from tag.
 
-  QUrl stream_url_;             // Temporary stream url set by url handler.
+  QString acoustid_id_;
+  QString acoustid_fingerprint_;
+
+  QString musicbrainz_album_artist_id_;
+  QString musicbrainz_artist_id_;
+  QString musicbrainz_original_artist_id_;
+  QString musicbrainz_album_id_;
+  QString musicbrainz_original_album_id_;
+  QString musicbrainz_recording_id_;
+  QString musicbrainz_track_id_;
+  QString musicbrainz_disc_id_;
+  QString musicbrainz_release_group_id_;
+  QString musicbrainz_work_id_;
+
   bool init_from_file_;         // Whether this song was loaded from a file using taglib.
   bool suspicious_tags_;        // Whether our encoding guesser thinks these tags might be incorrectly encoded.
+
+  QString title_sortable_;
+  QString album_sortable_;
+  QString artist_sortable_;
+  QString albumartist_sortable_;
+
+  QUrl stream_url_;             // Temporary stream url set by the URL handler.
 
 };
 
 Song::Private::Private(const Source source)
-    : valid_(false),
-      id_(-1),
+    : id_(-1),
+      valid_(false),
 
       track_(-1),
       disc_(-1),
@@ -263,6 +289,9 @@ Song::Private::Private(const Source source)
       compilation_on_(false),
       compilation_off_(false),
 
+      art_embedded_(false),
+      art_unset_(false),
+
       rating_(-1),
 
       init_from_file_(false),
@@ -274,38 +303,30 @@ Song::Song(const Source source) : d(new Private(source)) {}
 Song::Song(const Song &other) = default;
 Song::~Song() = default;
 
+bool Song::operator==(const Song &other) const {
+  return source() == other.source() && url() == other.url() && beginning_nanosec() == other.beginning_nanosec();
+}
+
+bool Song::operator!=(const Song &other) const {
+  return source() != other.source() || url() != other.url() || beginning_nanosec() != other.beginning_nanosec();
+}
+
 Song &Song::operator=(const Song &other) {
   d = other.d;
   return *this;
 }
 
-bool Song::is_valid() const { return d->valid_; }
-bool Song::is_unavailable() const { return d->unavailable_; }
 int Song::id() const { return d->id_; }
-
-QString Song::artist_id() const { return d->artist_id_.isNull() ? "" : d->artist_id_; }
-QString Song::album_id() const { return d->album_id_.isNull() ? "" : d->album_id_; }
-QString Song::song_id() const { return d->song_id_.isNull() ? "" : d->song_id_; }
+bool Song::is_valid() const { return d->valid_; }
 
 const QString &Song::title() const { return d->title_; }
-const QString &Song::title_sortable() const { return d->title_sortable_; }
 const QString &Song::album() const { return d->album_; }
-const QString &Song::album_sortable() const { return d->album_sortable_; }
-// This value is useful for singles, which are one-track albums on their own.
-const QString &Song::effective_album() const { return d->album_.isEmpty() ? d->title_ : d->album_; }
 const QString &Song::artist() const { return d->artist_; }
-const QString &Song::artist_sortable() const { return d->artist_sortable_; }
 const QString &Song::albumartist() const { return d->albumartist_; }
-const QString &Song::albumartist_sortable() const { return d->albumartist_sortable_; }
-const QString &Song::effective_albumartist() const { return d->albumartist_.isEmpty() ? d->artist_ : d->albumartist_; }
-const QString &Song::effective_albumartist_sortable() const { return d->albumartist_.isEmpty() ? d->artist_sortable_ : d->albumartist_sortable_; }
-const QString &Song::playlist_albumartist() const { return is_compilation() ? d->albumartist_ : effective_albumartist(); }
-const QString &Song::playlist_albumartist_sortable() const { return is_compilation() ? d->albumartist_sortable_ : effective_albumartist_sortable(); }
 int Song::track() const { return d->track_; }
 int Song::disc() const { return d->disc_; }
 int Song::year() const { return d->year_; }
 int Song::originalyear() const { return d->originalyear_; }
-int Song::effective_originalyear() const { return d->originalyear_ < 0 ? d->year_ : d->originalyear_; }
 const QString &Song::genre() const { return d->genre_; }
 bool Song::compilation() const { return d->compilation_; }
 const QString &Song::composer() const { return d->composer_; }
@@ -313,6 +334,10 @@ const QString &Song::performer() const { return d->performer_; }
 const QString &Song::grouping() const { return d->grouping_; }
 const QString &Song::comment() const { return d->comment_; }
 const QString &Song::lyrics() const { return d->lyrics_; }
+
+QString Song::artist_id() const { return d->artist_id_.isNull() ? "" : d->artist_id_; }
+QString Song::album_id() const { return d->album_id_.isNull() ? "" : d->album_id_; }
+QString Song::song_id() const { return d->song_id_.isNull() ? "" : d->song_id_; }
 
 qint64 Song::beginning_nanosec() const { return d->beginning_; }
 qint64 Song::end_nanosec() const { return d->end_; }
@@ -330,6 +355,7 @@ Song::FileType Song::filetype() const { return d->filetype_; }
 qint64 Song::filesize() const { return d->filesize_; }
 qint64 Song::mtime() const { return d->mtime_; }
 qint64 Song::ctime() const { return d->ctime_; }
+bool Song::unavailable() const { return d->unavailable_; }
 
 QString Song::fingerprint() const { return d->fingerprint_; }
 
@@ -342,155 +368,40 @@ bool Song::compilation_detected() const { return d->compilation_detected_; }
 bool Song::compilation_off() const { return d->compilation_off_; }
 bool Song::compilation_on() const { return d->compilation_on_; }
 
+bool Song::art_embedded() const { return d->art_embedded_; }
 const QUrl &Song::art_automatic() const { return d->art_automatic_; }
 const QUrl &Song::art_manual() const { return d->art_manual_; }
-bool Song::has_manually_unset_cover() const { return d->art_manual_.path() == kManuallyUnsetCover; }
-void Song::set_manually_unset_cover() { d->art_manual_ = QUrl::fromLocalFile(kManuallyUnsetCover); }
-bool Song::has_embedded_cover() const { return d->art_automatic_.path() == kEmbeddedCover; }
-void Song::set_embedded_cover() { d->art_automatic_ = QUrl::fromLocalFile(kEmbeddedCover); }
-
-void Song::clear_art_automatic() { d->art_automatic_.clear(); }
-void Song::clear_art_manual() { d->art_manual_.clear(); }
-
-bool Song::additional_tags_supported() const {
-  return d->filetype_ == FileType::FLAC ||
-         d->filetype_ == FileType::WavPack ||
-         d->filetype_ == FileType::OggFlac ||
-         d->filetype_ == FileType::OggVorbis ||
-         d->filetype_ == FileType::OggOpus ||
-         d->filetype_ == FileType::OggSpeex ||
-         d->filetype_ == FileType::MPEG ||
-         d->filetype_ == FileType::MP4 ||
-         d->filetype_ == FileType::MPC ||
-         d->filetype_ == FileType::APE;
-}
-
-bool Song::albumartist_supported() const {
-  return additional_tags_supported();
-}
-
-bool Song::composer_supported() const {
-  return additional_tags_supported();
-}
-
-bool Song::performer_supported() const {
-  return d->filetype_ == FileType::FLAC ||
-         d->filetype_ == FileType::WavPack ||
-         d->filetype_ == FileType::OggFlac ||
-         d->filetype_ == FileType::OggVorbis ||
-         d->filetype_ == FileType::OggOpus ||
-         d->filetype_ == FileType::OggSpeex ||
-         d->filetype_ == FileType::MPEG ||
-         d->filetype_ == FileType::MPC ||
-         d->filetype_ == FileType::APE;
-}
-
-bool Song::grouping_supported() const {
-  return additional_tags_supported();
-}
-
-bool Song::genre_supported() const {
-  return additional_tags_supported();
-}
-
-bool Song::compilation_supported() const {
-  return additional_tags_supported();
-}
-
-bool Song::rating_supported() const {
-  return d->filetype_ == FileType::FLAC ||
-         d->filetype_ == FileType::WavPack ||
-         d->filetype_ == FileType::OggFlac ||
-         d->filetype_ == FileType::OggVorbis ||
-         d->filetype_ == FileType::OggOpus ||
-         d->filetype_ == FileType::OggSpeex ||
-         d->filetype_ == FileType::MPEG ||
-         d->filetype_ == FileType::MP4 ||
-         d->filetype_ == FileType::ASF ||
-         d->filetype_ == FileType::MPC ||
-         d->filetype_ == FileType::APE;
-}
-
-bool Song::comment_supported() const {
-  return additional_tags_supported();
-}
-
-bool Song::lyrics_supported() const {
-  return additional_tags_supported();
-}
-
-bool Song::save_embedded_cover_supported(const FileType filetype) {
-
-  return filetype == FileType::FLAC ||
-         filetype == FileType::OggVorbis ||
-         filetype == FileType::OggOpus ||
-         filetype == FileType::MPEG ||
-         filetype == FileType::MP4;
-
-}
-
-const QUrl &Song::stream_url() const { return d->stream_url_; }
-const QUrl &Song::effective_stream_url() const { return !d->stream_url_.isEmpty() && d->stream_url_.isValid() ? d->stream_url_ : d->url_; }
-bool Song::init_from_file() const { return d->init_from_file_; }
+bool Song::art_unset() const { return d->art_unset_; }
 
 const QString &Song::cue_path() const { return d->cue_path_; }
-bool Song::has_cue() const { return !d->cue_path_.isEmpty(); }
 
 float Song::rating() const { return d->rating_; }
 
-bool Song::is_collection_song() const { return d->source_ == Source::Collection; }
-bool Song::is_metadata_good() const { return !d->url_.isEmpty() && !d->artist_.isEmpty() && !d->title_.isEmpty(); }
-bool Song::is_stream() const { return is_radio() || d->source_ == Source::Tidal || d->source_ == Source::Subsonic || d->source_ == Source::Qobuz; }
-bool Song::is_radio() const { return d->source_ == Source::Stream || d->source_ == Source::SomaFM || d->source_ == Source::RadioParadise; }
-bool Song::is_cdda() const { return d->source_ == Source::CDDA; }
-bool Song::is_compilation() const { return (d->compilation_ || d->compilation_detected_ || d->compilation_on_) && !d->compilation_off_; }
-bool Song::stream_url_can_expire() const { return d->source_ == Source::Tidal || d->source_ == Source::Qobuz; }
-bool Song::is_module_music() const { return d->filetype_ == FileType::MOD || d->filetype_ == FileType::S3M || d->filetype_ == FileType::XM || d->filetype_ == FileType::IT; }
+const QString &Song::acoustid_id() const { return d->acoustid_id_; }
+const QString &Song::acoustid_fingerprint() const { return d->acoustid_fingerprint_; }
 
-bool Song::art_automatic_is_valid() const {
-  return !d->art_automatic_.isEmpty() &&
-         (
-         (d->art_automatic_.path() == kManuallyUnsetCover) ||
-         (d->art_automatic_.path() == kEmbeddedCover) ||
-         (d->art_automatic_.isValid() && !d->art_automatic_.isLocalFile()) ||
-         (d->art_automatic_.isLocalFile() && QFile::exists(d->art_automatic_.toLocalFile())) ||
-         (d->art_automatic_.scheme().isEmpty() && !d->art_automatic_.path().isEmpty() && QFile::exists(d->art_automatic_.path()))
-         );
-}
+const QString &Song::musicbrainz_album_artist_id() const { return d->musicbrainz_album_artist_id_; }
+const QString &Song::musicbrainz_artist_id() const { return d->musicbrainz_artist_id_; }
+const QString &Song::musicbrainz_original_artist_id() const { return d->musicbrainz_original_artist_id_; }
+const QString &Song::musicbrainz_album_id() const { return d->musicbrainz_album_id_; }
+const QString &Song::musicbrainz_original_album_id() const { return d->musicbrainz_original_album_id_; }
+const QString &Song::musicbrainz_recording_id() const { return d->musicbrainz_recording_id_; }
+const QString &Song::musicbrainz_track_id() const { return d->musicbrainz_track_id_; }
+const QString &Song::musicbrainz_disc_id() const { return d->musicbrainz_disc_id_; }
+const QString &Song::musicbrainz_release_group_id() const { return d->musicbrainz_release_group_id_; }
+const QString &Song::musicbrainz_work_id() const { return d->musicbrainz_work_id_; }
 
-bool Song::art_manual_is_valid() const {
-  return !d->art_manual_.isEmpty() &&
-         (
-         (d->art_manual_.path() == kManuallyUnsetCover) ||
-         (d->art_manual_.path() == kEmbeddedCover) ||
-         (d->art_manual_.isValid() && !d->art_manual_.isLocalFile()) ||
-         (d->art_manual_.isLocalFile() && QFile::exists(d->art_manual_.toLocalFile())) ||
-         (d->art_manual_.scheme().isEmpty() && !d->art_manual_.path().isEmpty() && QFile::exists(d->art_manual_.path()))
-         );
-}
+bool Song::init_from_file() const { return d->init_from_file_; }
 
-bool Song::has_valid_art() const { return art_automatic_is_valid() || art_manual_is_valid(); }
+const QString &Song::title_sortable() const { return d->title_sortable_; }
+const QString &Song::album_sortable() const { return d->album_sortable_; }
+const QString &Song::artist_sortable() const { return d->artist_sortable_; }
+const QString &Song::albumartist_sortable() const { return d->albumartist_sortable_; }
+
+const QUrl &Song::stream_url() const { return d->stream_url_; }
 
 void Song::set_id(const int id) { d->id_ = id; }
 void Song::set_valid(const bool v) { d->valid_ = v; }
-
-void Song::set_artist_id(const QString &v) { d->artist_id_ = v; }
-void Song::set_album_id(const QString &v) { d->album_id_ = v; }
-void Song::set_song_id(const QString &v) { d->song_id_ = v; }
-
-QString Song::sortable(const QString &v) {
-
-  QString copy = v.toLower();
-
-  for (const auto &i : kArticles) {
-    if (copy.startsWith(i)) {
-      qint64 ilen = i.length();
-      return copy.right(copy.length() - ilen) + ", " + copy.left(ilen - 1);
-    }
-  }
-
-  return copy;
-}
 
 void Song::set_title(const QString &v) { d->title_sortable_ = sortable(v); d->title_ = v; }
 void Song::set_album(const QString &v) { d->album_sortable_ = sortable(v); d->album_ = v; }
@@ -507,6 +418,10 @@ void Song::set_performer(const QString &v) { d->performer_ = v; }
 void Song::set_grouping(const QString &v) { d->grouping_ = v; }
 void Song::set_comment(const QString &v) { d->comment_ = v; }
 void Song::set_lyrics(const QString &v) { d->lyrics_ = v; }
+
+void Song::set_artist_id(const QString &v) { d->artist_id_ = v; }
+void Song::set_album_id(const QString &v) { d->album_id_ = v; }
+void Song::set_song_id(const QString &v) { d->song_id_ = v; }
 
 void Song::set_beginning_nanosec(const qint64 v) { d->beginning_ = qMax(0LL, v); }
 void Song::set_end_nanosec(const qint64 v) { d->end_ = v; }
@@ -537,16 +452,348 @@ void Song::set_compilation_detected(const bool v) { d->compilation_detected_ = v
 void Song::set_compilation_on(const bool v) { d->compilation_on_ = v; }
 void Song::set_compilation_off(const bool v) { d->compilation_off_ = v; }
 
+void Song::set_art_embedded(const bool v) { d->art_embedded_ = v; }
 void Song::set_art_automatic(const QUrl &v) { d->art_automatic_ = v; }
 void Song::set_art_manual(const QUrl &v) { d->art_manual_ = v; }
+void Song::set_art_unset(const bool v) { d->art_unset_ = v; }
+
 void Song::set_cue_path(const QString &v) { d->cue_path_ = v; }
 
 void Song::set_rating(const float v) { d->rating_ = v; }
 
+void Song::set_acoustid_id(const QString &v) { d->acoustid_id_ = v; }
+void Song::set_acoustid_fingerprint(const QString &v) { d->acoustid_fingerprint_ = v; }
+
+void Song::set_musicbrainz_album_artist_id(const QString &v) { d->musicbrainz_album_artist_id_ = v; }
+void Song::set_musicbrainz_artist_id(const QString &v) { d->musicbrainz_artist_id_ = v; }
+void Song::set_musicbrainz_original_artist_id(const QString &v) { d->musicbrainz_original_artist_id_ = v; }
+void Song::set_musicbrainz_album_id(const QString &v) { d->musicbrainz_album_id_ = v; }
+void Song::set_musicbrainz_original_album_id(const QString &v) { d->musicbrainz_original_album_id_ = v; }
+void Song::set_musicbrainz_recording_id(const QString &v) { d->musicbrainz_recording_id_ = v; }
+void Song::set_musicbrainz_track_id(const QString &v) { d->musicbrainz_track_id_ = v; }
+void Song::set_musicbrainz_disc_id(const QString &v) { d->musicbrainz_disc_id_ = v; }
+void Song::set_musicbrainz_release_group_id(const QString &v) { d->musicbrainz_release_group_id_ = v; }
+void Song::set_musicbrainz_work_id(const QString &v) { d->musicbrainz_work_id_ = v; }
+
 void Song::set_stream_url(const QUrl &v) { d->stream_url_ = v; }
+
+const QUrl &Song::effective_stream_url() const { return !d->stream_url_.isEmpty() && d->stream_url_.isValid() ? d->stream_url_ : d->url_; }
+const QString &Song::effective_albumartist() const { return d->albumartist_.isEmpty() ? d->artist_ : d->albumartist_; }
+const QString &Song::effective_albumartist_sortable() const { return d->albumartist_.isEmpty() ? d->artist_sortable_ : d->albumartist_sortable_; }
+const QString &Song::effective_album() const { return d->album_.isEmpty() ? d->title_ : d->album_; }
+int Song::effective_originalyear() const { return d->originalyear_ < 0 ? d->year_ : d->originalyear_; }
+const QString &Song::playlist_albumartist() const { return is_compilation() ? d->albumartist_ : effective_albumartist(); }
+const QString &Song::playlist_albumartist_sortable() const { return is_compilation() ? d->albumartist_sortable_ : effective_albumartist_sortable(); }
+
+bool Song::is_metadata_good() const { return !d->url_.isEmpty() && !d->artist_.isEmpty() && !d->title_.isEmpty(); }
+bool Song::is_collection_song() const { return d->source_ == Source::Collection; }
+bool Song::is_stream() const { return is_radio() || d->source_ == Source::Tidal || d->source_ == Source::Subsonic || d->source_ == Source::Qobuz; }
+bool Song::is_radio() const { return d->source_ == Source::Stream || d->source_ == Source::SomaFM || d->source_ == Source::RadioParadise; }
+bool Song::is_cdda() const { return d->source_ == Source::CDDA; }
+bool Song::is_compilation() const { return (d->compilation_ || d->compilation_detected_ || d->compilation_on_) && !d->compilation_off_; }
+bool Song::stream_url_can_expire() const { return d->source_ == Source::Tidal || d->source_ == Source::Qobuz; }
+bool Song::is_module_music() const { return d->filetype_ == FileType::MOD || d->filetype_ == FileType::S3M || d->filetype_ == FileType::XM || d->filetype_ == FileType::IT; }
+bool Song::has_cue() const { return !d->cue_path_.isEmpty(); }
+
+bool Song::art_automatic_is_valid() const {
+  return !d->art_automatic_.isEmpty() && d->art_automatic_.isValid() && (!d->art_automatic_.isLocalFile() || (d->art_automatic_.isLocalFile() && QFile::exists(d->art_automatic_.toLocalFile())));
+}
+bool Song::art_manual_is_valid() const {
+  return !d->art_manual_.isEmpty() && d->art_manual_.isValid() && (!d->art_manual_.isLocalFile() || (d->art_manual_.isLocalFile() && QFile::exists(d->art_manual_.toLocalFile())));
+}
+bool Song::has_valid_art() const { return art_embedded() || art_automatic_is_valid() || art_manual_is_valid(); }
+void Song::clear_art_automatic() { d->art_automatic_.clear(); }
+void Song::clear_art_manual() { d->art_manual_.clear(); }
+
+bool Song::additional_tags_supported() const {
+
+  return d->filetype_ == FileType::FLAC ||
+    d->filetype_ == FileType::WavPack ||
+    d->filetype_ == FileType::OggFlac ||
+    d->filetype_ == FileType::OggVorbis ||
+    d->filetype_ == FileType::OggOpus ||
+    d->filetype_ == FileType::OggSpeex ||
+    d->filetype_ == FileType::MPEG ||
+    d->filetype_ == FileType::MP4 ||
+    d->filetype_ == FileType::MPC ||
+    d->filetype_ == FileType::APE;
+
+}
+
+bool Song::albumartist_supported() const {
+  return additional_tags_supported();
+}
+
+bool Song::composer_supported() const {
+  return additional_tags_supported();
+}
+
+bool Song::performer_supported() const {
+
+  return d->filetype_ == FileType::FLAC ||
+    d->filetype_ == FileType::WavPack ||
+    d->filetype_ == FileType::OggFlac ||
+    d->filetype_ == FileType::OggVorbis ||
+    d->filetype_ == FileType::OggOpus ||
+    d->filetype_ == FileType::OggSpeex ||
+    d->filetype_ == FileType::MPEG ||
+    d->filetype_ == FileType::MPC ||
+    d->filetype_ == FileType::APE;
+
+}
+
+bool Song::grouping_supported() const {
+  return additional_tags_supported();
+}
+
+bool Song::genre_supported() const {
+  return additional_tags_supported();
+}
+
+bool Song::compilation_supported() const {
+  return additional_tags_supported();
+}
+
+bool Song::rating_supported() const {
+
+  return d->filetype_ == FileType::FLAC ||
+    d->filetype_ == FileType::WavPack ||
+    d->filetype_ == FileType::OggFlac ||
+    d->filetype_ == FileType::OggVorbis ||
+    d->filetype_ == FileType::OggOpus ||
+    d->filetype_ == FileType::OggSpeex ||
+    d->filetype_ == FileType::MPEG ||
+    d->filetype_ == FileType::MP4 ||
+    d->filetype_ == FileType::ASF ||
+    d->filetype_ == FileType::MPC ||
+    d->filetype_ == FileType::APE;
+
+}
+
+bool Song::comment_supported() const {
+  return additional_tags_supported();
+}
+
+bool Song::lyrics_supported() const {
+  return additional_tags_supported();
+}
+
+bool Song::save_embedded_cover_supported(const FileType filetype) {
+
+  return filetype == FileType::FLAC ||
+    filetype == FileType::OggVorbis ||
+    filetype == FileType::OggOpus ||
+    filetype == FileType::MPEG ||
+    filetype == FileType::MP4;
+
+}
+
+QString Song::sortable(const QString &v) {
+
+  QString copy = v.toLower();
+
+  for (const auto &i : kArticles) {
+    if (copy.startsWith(i)) {
+      qint64 ilen = i.length();
+      return copy.right(copy.length() - ilen) + ", " + copy.left(ilen - 1);
+    }
+  }
+
+  return copy;
+
+}
 
 QString Song::JoinSpec(const QString &table) {
   return Utilities::Prepend(table + ".", kColumns).join(", ");
+}
+
+QString Song::PrettyTitle() const {
+
+  QString title(d->title_);
+
+  if (title.isEmpty()) title = d->basefilename_;
+  if (title.isEmpty()) title = d->url_.toString();
+
+  return title;
+
+}
+
+QString Song::PrettyTitleWithArtist() const {
+
+  QString title(PrettyTitle());
+
+  if (!d->artist_.isEmpty()) title = d->artist_ + " - " + title;
+
+  return title;
+
+}
+
+QString Song::PrettyLength() const {
+
+  if (length_nanosec() == -1) return QString();
+
+  return Utilities::PrettyTimeNanosec(length_nanosec());
+
+}
+
+QString Song::PrettyYear() const {
+
+  if (d->year_ == -1) return QString();
+
+  return QString::number(d->year_);
+
+}
+
+QString Song::PrettyOriginalYear() const {
+
+  if (effective_originalyear() == -1) return QString();
+
+  return QString::number(effective_originalyear());
+
+}
+
+QString Song::TitleWithCompilationArtist() const {
+
+  QString title(d->title_);
+
+  if (title.isEmpty()) title = d->basefilename_;
+
+  if (is_compilation() && !d->artist_.isEmpty() && !d->artist_.contains("various", Qt::CaseInsensitive)) title = d->artist_ + " - " + title;
+
+  return title;
+
+}
+
+QString Song::SampleRateBitDepthToText() const {
+
+  if (d->samplerate_ == -1) return QString("");
+  if (d->bitdepth_ == -1) return QString("%1 hz").arg(d->samplerate_);
+
+  return QString("%1 hz / %2 bit").arg(d->samplerate_).arg(d->bitdepth_);
+
+}
+
+QString Song::PrettyRating() const {
+
+  float rating = d->rating_;
+
+  if (rating == -1.0F) return "0";
+
+  return QString::number(static_cast<int>(rating * 100));
+
+}
+
+bool Song::IsEditable() const {
+  return d->valid_ && d->url_.isValid() && (d->url_.isLocalFile() || d->source_ == Source::Stream) && !has_cue();
+}
+
+bool Song::IsMetadataEqual(const Song &other) const {
+
+  return d->title_ == other.d->title_ &&
+    d->album_ == other.d->album_ &&
+    d->artist_ == other.d->artist_ &&
+    d->albumartist_ == other.d->albumartist_ &&
+    d->track_ == other.d->track_ &&
+    d->disc_ == other.d->disc_ &&
+    d->year_ == other.d->year_ &&
+    d->originalyear_ == other.d->originalyear_ &&
+    d->genre_ == other.d->genre_ &&
+    d->compilation_ == other.d->compilation_ &&
+    d->composer_ == other.d->composer_ &&
+    d->performer_ == other.d->performer_ &&
+    d->grouping_ == other.d->grouping_ &&
+    d->comment_ == other.d->comment_ &&
+    d->lyrics_ == other.d->lyrics_ &&
+    d->artist_id_ == other.d->artist_id_ &&
+    d->album_id_ == other.d->album_id_ &&
+    d->song_id_ == other.d->song_id_ &&
+    d->beginning_ == other.d->beginning_ &&
+    length_nanosec() == other.length_nanosec() &&
+    d->bitrate_ == other.d->bitrate_ &&
+    d->samplerate_ == other.d->samplerate_ &&
+    d->bitdepth_ == other.d->bitdepth_ &&
+    d->cue_path_ == other.d->cue_path_;
+}
+
+bool Song::IsPlayStatisticsEqual(const Song &other) const {
+
+  return d->playcount_ == other.d->playcount_ &&
+    d->skipcount_ == other.d->skipcount_ &&
+    d->lastplayed_ == other.d->lastplayed_;
+
+}
+
+bool Song::IsRatingEqual(const Song &other) const {
+
+  return d->rating_ == other.d->rating_;
+
+}
+
+bool Song::IsFingerprintEqual(const Song &other) const {
+
+  return d->fingerprint_ == other.d->fingerprint_;
+
+}
+
+bool Song::IsAcoustIdEqual(const Song &other) const {
+
+  return d->acoustid_id_ == other.d->acoustid_id_ && d->acoustid_fingerprint_ == other.d->acoustid_fingerprint_;
+
+}
+
+bool Song::IsMusicBrainzEqual(const Song &other) const {
+
+  return d->musicbrainz_album_artist_id_ == other.d->musicbrainz_album_artist_id_ &&
+    d->musicbrainz_artist_id_ == other.d->musicbrainz_artist_id_ &&
+    d->musicbrainz_original_artist_id_ == other.d->musicbrainz_original_artist_id_ &&
+    d->musicbrainz_album_id_ == other.d->musicbrainz_album_id_ &&
+    d->musicbrainz_original_album_id_ == other.d->musicbrainz_original_album_id_ &&
+    d->musicbrainz_recording_id_ == other.d->musicbrainz_recording_id_ &&
+    d->musicbrainz_track_id_ == other.d->musicbrainz_track_id_ &&
+    d->musicbrainz_disc_id_ == other.d->musicbrainz_disc_id_ &&
+    d->musicbrainz_release_group_id_ == other.d->musicbrainz_release_group_id_ &&
+    d->musicbrainz_work_id_ == other.d->musicbrainz_work_id_;
+
+}
+
+bool Song::IsArtEqual(const Song &other) const {
+
+  return d->art_embedded_ == other.d->art_embedded_ &&
+    d->art_automatic_ == other.d->art_automatic_ &&
+    d->art_manual_ == other.d->art_manual_ &&
+    d->art_unset_ == other.d->art_unset_;
+
+}
+
+bool Song::IsAllMetadataEqual(const Song &other) const {
+
+  return IsMetadataEqual(other) &&
+    IsPlayStatisticsEqual(other) &&
+    IsRatingEqual(other) &&
+    IsAcoustIdEqual(other) &&
+    IsMusicBrainzEqual(other) &&
+    IsArtEqual(other);
+
+}
+
+bool Song::IsOnSameAlbum(const Song &other) const {
+
+  if (is_compilation() != other.is_compilation()) return false;
+
+  if (has_cue() && other.has_cue() && cue_path() == other.cue_path()) {
+    return true;
+  }
+
+  if (is_compilation() && album() == other.album()) return true;
+
+  return effective_album() == other.effective_album() && effective_albumartist() == other.effective_albumartist();
+
+}
+
+bool Song::IsSimilar(const Song &other) const {
+  return title().compare(other.title(), Qt::CaseInsensitive) == 0 &&
+    artist().compare(other.artist(), Qt::CaseInsensitive) == 0 &&
+    album().compare(other.album(), Qt::CaseInsensitive) == 0;
 }
 
 Song::Source Song::SourceFromURL(const QUrl &url) {
@@ -739,6 +986,7 @@ QIcon Song::IconForFiletype(const FileType filetype) {
 }
 
 bool Song::IsFileLossless() const {
+
   switch (filetype()) {
     case FileType::WAV:
     case FileType::FLAC:
@@ -755,6 +1003,7 @@ bool Song::IsFileLossless() const {
     default:
       return false;
   }
+
 }
 
 Song::FileType Song::FiletypeByMimetype(const QString &mimetype) {
@@ -872,7 +1121,7 @@ void Song::SortSongsListAlphabetically(SongList *songs) {
   std::sort(songs->begin(), songs->end(), CompareSongsName);
 }
 
-void Song::Init(const QString &title, const QString &artist, const QString &album, qint64 length_nanosec) {
+void Song::Init(const QString &title, const QString &artist, const QString &album, const qint64 length_nanosec) {
 
   d->valid_ = true;
 
@@ -884,7 +1133,7 @@ void Song::Init(const QString &title, const QString &artist, const QString &albu
 
 }
 
-void Song::Init(const QString &title, const QString &artist, const QString &album, qint64 beginning, qint64 end) {
+void Song::Init(const QString &title, const QString &artist, const QString &album, const qint64 beginning, const qint64 end) {
 
   d->valid_ = true;
 
@@ -903,27 +1152,27 @@ void Song::InitFromProtobuf(const spb::tagreader::SongMetadata &pb) {
 
   d->init_from_file_ = true;
   d->valid_ = pb.valid();
-  set_title(QStringFromStdString(pb.title()));
-  set_album(QStringFromStdString(pb.album()));
-  set_artist(QStringFromStdString(pb.artist()));
-  set_albumartist(QStringFromStdString(pb.albumartist()));
+  set_title(QString::fromUtf8(pb.title().data(), static_cast<qint64>(pb.title().size())));
+  set_album(QString::fromUtf8(pb.album().data(), static_cast<qint64>(pb.album().size())));
+  set_artist(QString::fromUtf8(pb.artist().data(), static_cast<qint64>(pb.artist().size())));
+  set_albumartist(QString::fromUtf8(pb.albumartist().data(), static_cast<qint64>(pb.albumartist().size())));
   d->track_ = pb.track();
   d->disc_ = pb.disc();
   d->year_ = pb.year();
   d->originalyear_ = pb.originalyear();
-  d->genre_ = QStringFromStdString(pb.genre());
+  d->genre_ = QString::fromUtf8(pb.genre().data(), static_cast<qint64>(pb.genre().size()));
   d->compilation_ = pb.compilation();
-  d->composer_ = QStringFromStdString(pb.composer());
-  d->performer_ = QStringFromStdString(pb.performer());
-  d->grouping_ = QStringFromStdString(pb.grouping());
-  d->comment_ = QStringFromStdString(pb.comment());
-  d->lyrics_ = QStringFromStdString(pb.lyrics());
+  d->composer_ = QString::fromUtf8(pb.composer().data(), static_cast<qint64>(pb.composer().size()));
+  d->performer_ = QString::fromUtf8(pb.performer().data(), static_cast<qint64>(pb.performer().size()));
+  d->grouping_ = QString::fromUtf8(pb.grouping().data(), static_cast<qint64>(pb.grouping().size()));
+  d->comment_ = QString::fromUtf8(pb.comment().data(), static_cast<qint64>(pb.comment().size()));
+  d->lyrics_ = QString::fromUtf8(pb.lyrics().data(), static_cast<qint64>(pb.lyrics().size()));
   set_length_nanosec(static_cast<qint64>(pb.length_nanosec()));
   d->bitrate_ = pb.bitrate();
   d->samplerate_ = pb.samplerate();
   d->bitdepth_ = pb.bitdepth();
   set_url(QUrl::fromEncoded(QByteArray(pb.url().data(), static_cast<qint64>(pb.url().size()))));
-  d->basefilename_ = QStringFromStdString(pb.basefilename());
+  d->basefilename_ = QString::fromUtf8(pb.basefilename().data(), static_cast<qint64>(pb.basefilename().size()));
   d->filetype_ = static_cast<FileType>(pb.filetype());
   d->filesize_ = pb.filesize();
   d->mtime_ = pb.mtime();
@@ -939,10 +1188,21 @@ void Song::InitFromProtobuf(const spb::tagreader::SongMetadata &pb) {
     d->rating_ = pb.rating();
   }
 
-  if (pb.has_art_automatic()) {
-    QByteArray art_automatic(pb.art_automatic().data(), static_cast<qint64>(pb.art_automatic().size()));
-    if (!art_automatic.isEmpty()) set_art_automatic(QUrl::fromLocalFile(art_automatic));
-  }
+  d->art_embedded_ = pb.has_art_embedded();
+
+  d->acoustid_id_ = QString::fromUtf8(pb.acoustid_id().data(), static_cast<qint64>(pb.acoustid_id().size()));
+  d->acoustid_fingerprint_ = QString::fromUtf8(pb.acoustid_fingerprint().data(), static_cast<qint64>(pb.acoustid_fingerprint().size()));
+
+  d->musicbrainz_album_artist_id_ = QString::fromUtf8(pb.musicbrainz_album_artist_id().data(), static_cast<qint64>(pb.musicbrainz_album_artist_id().size()));
+  d->musicbrainz_artist_id_ = QString::fromUtf8(pb.musicbrainz_artist_id().data(), static_cast<qint64>(pb.musicbrainz_artist_id().size()));
+  d->musicbrainz_original_artist_id_ = QString::fromUtf8(pb.musicbrainz_original_artist_id().data(), static_cast<qint64>(pb.musicbrainz_original_artist_id().size()));
+  d->musicbrainz_album_id_ = QString::fromUtf8(pb.musicbrainz_album_id().data(), static_cast<qint64>(pb.musicbrainz_album_id().size()));
+  d->musicbrainz_original_album_id_ = QString::fromUtf8(pb.musicbrainz_original_album_id().data(), static_cast<qint64>(pb.musicbrainz_original_album_id().size()));
+  d->musicbrainz_recording_id_ = QString::fromUtf8(pb.musicbrainz_recording_id().data(), static_cast<qint64>(pb.musicbrainz_recording_id().size()));
+  d->musicbrainz_track_id_ = QString::fromUtf8(pb.musicbrainz_track_id().data(), static_cast<qint64>(pb.musicbrainz_track_id().size()));
+  d->musicbrainz_disc_id_ = QString::fromUtf8(pb.musicbrainz_disc_id().data(), static_cast<qint64>(pb.musicbrainz_disc_id().size()));
+  d->musicbrainz_release_group_id_ = QString::fromUtf8(pb.musicbrainz_release_group_id().data(), static_cast<qint64>(pb.musicbrainz_release_group_id().size()));
+  d->musicbrainz_work_id_ = QString::fromUtf8(pb.musicbrainz_work_id().data(), static_cast<qint64>(pb.musicbrainz_work_id().size()));
 
   d->suspicious_tags_ = pb.suspicious_tags();
 
@@ -953,30 +1213,29 @@ void Song::InitFromProtobuf(const spb::tagreader::SongMetadata &pb) {
 void Song::ToProtobuf(spb::tagreader::SongMetadata *pb) const {
 
   const QByteArray url(d->url_.toEncoded());
-  const QByteArray art_automatic(d->art_automatic_.toEncoded());
 
   pb->set_valid(d->valid_);
-  pb->set_title(DataCommaSizeFromQString(d->title_));
-  pb->set_album(DataCommaSizeFromQString(d->album_));
-  pb->set_artist(DataCommaSizeFromQString(d->artist_));
-  pb->set_albumartist(DataCommaSizeFromQString(d->albumartist_));
+  pb->set_title(d->title_.toStdString());
+  pb->set_album(d->album_.toStdString());
+  pb->set_artist(d->artist_.toStdString());
+  pb->set_albumartist(d->albumartist_.toStdString());
   pb->set_track(d->track_);
   pb->set_disc(d->disc_);
   pb->set_year(d->year_);
   pb->set_originalyear(d->originalyear_);
-  pb->set_genre(DataCommaSizeFromQString(d->genre_));
+  pb->set_genre(d->genre_.toStdString());
   pb->set_compilation(d->compilation_);
-  pb->set_composer(DataCommaSizeFromQString(d->composer_));
-  pb->set_performer(DataCommaSizeFromQString(d->performer_));
-  pb->set_grouping(DataCommaSizeFromQString(d->grouping_));
-  pb->set_comment(DataCommaSizeFromQString(d->comment_));
-  pb->set_lyrics(DataCommaSizeFromQString(d->lyrics_));
+  pb->set_composer(d->composer_.toStdString());
+  pb->set_performer(d->performer_.toStdString());
+  pb->set_grouping(d->grouping_.toStdString());
+  pb->set_comment(d->comment_.toStdString());
+  pb->set_lyrics(d->lyrics_.toStdString());
   pb->set_length_nanosec(length_nanosec());
   pb->set_bitrate(d->bitrate_);
   pb->set_samplerate(d->samplerate_);
   pb->set_bitdepth(d->bitdepth_);
   pb->set_url(url.constData(), url.size());
-  pb->set_basefilename(DataCommaSizeFromQString(d->basefilename_));
+  pb->set_basefilename(d->basefilename_.toStdString());
   pb->set_filetype(static_cast<spb::tagreader::SongMetadata_FileType>(d->filetype_));
   pb->set_filesize(d->filesize_);
   pb->set_mtime(d->mtime_);
@@ -985,8 +1244,23 @@ void Song::ToProtobuf(spb::tagreader::SongMetadata *pb) const {
   pb->set_skipcount(d->skipcount_);
   pb->set_lastplayed(d->lastplayed_);
   pb->set_lastseen(d->lastseen_);
-  pb->set_art_automatic(art_automatic.constData(), art_automatic.size());
+  pb->set_art_embedded(d->art_embedded_);
   pb->set_rating(d->rating_);
+
+  pb->set_acoustid_id(d->acoustid_id_.toStdString());
+  pb->set_acoustid_fingerprint(d->acoustid_fingerprint_.toStdString());
+
+  pb->set_musicbrainz_album_artist_id(d->musicbrainz_album_artist_id_.toStdString());
+  pb->set_musicbrainz_artist_id(d->musicbrainz_artist_id_.toStdString());
+  pb->set_musicbrainz_original_artist_id(d->musicbrainz_original_artist_id_.toStdString());
+  pb->set_musicbrainz_album_id(d->musicbrainz_album_id_.toStdString());
+  pb->set_musicbrainz_original_album_id(d->musicbrainz_original_album_id_.toStdString());
+  pb->set_musicbrainz_recording_id(d->musicbrainz_recording_id_.toStdString());
+  pb->set_musicbrainz_track_id(d->musicbrainz_track_id_.toStdString());
+  pb->set_musicbrainz_disc_id(d->musicbrainz_disc_id_.toStdString());
+  pb->set_musicbrainz_release_group_id(d->musicbrainz_release_group_id_.toStdString());
+  pb->set_musicbrainz_work_id(d->musicbrainz_work_id_.toStdString());
+
   pb->set_suspicious_tags(d->suspicious_tags_);
 
 }
@@ -1018,7 +1292,7 @@ void Song::InitFromQuery(const SqlRow &q, const bool reliable_metadata) {
   d->bitrate_ = q.ValueToInt("bitrate");
   d->samplerate_ = q.ValueToInt("samplerate");
   d->bitdepth_ = q.ValueToInt("bitdepth");
-  d->source_ = Source(q.value("source").isNull() ? 0 : q.value("source").toInt());
+  d->source_ = static_cast<Source>(q.value("source").isNull() ? 0 : q.value("source").toInt());
   d->directory_id_ = q.ValueToInt("directory_id");
   set_url(QUrl::fromEncoded(q.ValueToString("url").toUtf8()));
   d->basefilename_ = QFileInfo(d->url_.toLocalFile()).fileName();
@@ -1035,27 +1309,28 @@ void Song::InitFromQuery(const SqlRow &q, const bool reliable_metadata) {
   d->compilation_detected_ = q.ValueToBool("compilation_detected");
   d->compilation_on_ = q.ValueToBool("compilation_on");
   d->compilation_off_ = q.ValueToBool("compilation_off");
-  QString art_automatic = q.ValueToString("art_automatic");
-  if (!art_automatic.isEmpty()) {
-    if (art_automatic.contains(QRegularExpression("..+:.*"))) {
-      set_art_automatic(QUrl::fromEncoded(art_automatic.toUtf8()));
-    }
-    else {
-      set_art_automatic(QUrl::fromLocalFile(art_automatic));
-    }
-  }
-  QString art_manual = q.ValueToString("art_manual");
-  if (!art_manual.isEmpty()) {
-    if (art_manual.contains(QRegularExpression("..+:.*"))) {
-      set_art_manual(QUrl::fromEncoded(art_manual.toUtf8()));
-    }
-    else {
-      set_art_manual(QUrl::fromLocalFile(art_manual));
-    }
-  }
+
+  d->art_embedded_ = q.ValueToBool("art_embedded");
+  d->art_automatic_ = QUrl::fromEncoded(q.ValueToString("art_automatic").toUtf8());
+  d->art_manual_ = QUrl::fromEncoded(q.ValueToString("art_manual").toUtf8());
+  d->art_unset_ = q.ValueToBool("art_unset");
 
   d->cue_path_ = q.ValueToString("cue_path");
   d->rating_ = q.ValueToFloat("rating");
+
+  d->acoustid_id_ = q.ValueToString("acoustid_id");
+  d->acoustid_fingerprint_ = q.ValueToString("acoustid_fingerprint");
+
+  d->musicbrainz_album_artist_id_ = q.ValueToString("musicbrainz_album_artist_id");
+  d->musicbrainz_artist_id_ = q.ValueToString("musicbrainz_artist_id");
+  d->musicbrainz_original_artist_id_ = q.ValueToString("musicbrainz_original_artist_id");
+  d->musicbrainz_album_id_ = q.ValueToString("musicbrainz_album_id");
+  d->musicbrainz_original_album_id_ = q.ValueToString("musicbrainz_original_album_id");
+  d->musicbrainz_recording_id_ = q.ValueToString("musicbrainz_recording_id");
+  d->musicbrainz_track_id_ = q.ValueToString("musicbrainz_track_id");
+  d->musicbrainz_disc_id_ = q.ValueToString("musicbrainz_disc_id");
+  d->musicbrainz_release_group_id_ = q.ValueToString("musicbrainz_release_group_id");
+  d->musicbrainz_work_id_ = q.ValueToString("musicbrainz_work_id");
 
   d->valid_ = true;
   d->init_from_file_ = reliable_metadata;
@@ -1078,9 +1353,9 @@ void Song::InitFromFilePartial(const QString &filename, const QFileInfo &fileinf
 
 void Song::InitArtManual() {
 
-  // If we don't have an art, check if we have one in the cache
-  if (d->art_manual_.isEmpty() && d->art_automatic_.isEmpty() && !effective_albumartist().isEmpty() && !effective_album().isEmpty()) {
-    QString filename(Utilities::Sha1CoverHash(effective_albumartist(), effective_album()).toHex() + ".jpg");
+  // If we don't have cover art, check if we have one in the cache
+  if (d->art_manual_.isEmpty() && !effective_albumartist().isEmpty() && !effective_album().isEmpty()) {
+    QString filename(CoverUtils::Sha1CoverHash(effective_albumartist(), effective_album()).toHex() + ".jpg");
     QString path(ImageCacheDir(d->source_) + "/" + filename);
     if (QFile::exists(path)) {
       d->art_manual_ = QUrl::fromLocalFile(path);
@@ -1091,7 +1366,7 @@ void Song::InitArtManual() {
 
 void Song::InitArtAutomatic() {
 
-  if (d->source_ == Source::LocalFile && d->url_.isLocalFile() && d->art_automatic_.isEmpty()) {
+  if (d->art_automatic_.isEmpty() && d->source_ == Source::LocalFile && d->url_.isLocalFile()) {
     // Pick the first image file in the album directory.
     QFileInfo file(d->url_.toLocalFile());
     QDir dir(file.path());
@@ -1153,7 +1428,7 @@ void Song::InitFromItdb(Itdb_Track *track, const QString &prefix) {
       QString cover_path = ImageCacheDir(Source::Device);
       QDir dir(cover_path);
       if (!dir.exists()) dir.mkpath(cover_path);
-      QString cover_file = cover_path + "/" + Utilities::Sha1CoverHash(effective_albumartist(), effective_album()).toHex() + ".jpg";
+      QString cover_file = cover_path + "/" + CoverUtils::Sha1CoverHash(effective_albumartist(), effective_album()).toHex() + ".jpg";
       GError *error = nullptr;
       if (dir.exists() && gdk_pixbuf_save(pixbuf, cover_file.toUtf8().constData(), "jpeg", &error, nullptr)) {
         d->art_manual_ = QUrl::fromLocalFile(cover_file);
@@ -1290,60 +1565,6 @@ void Song::ToMTP(LIBMTP_track_t *track) const {
 }
 #endif
 
-bool Song::MergeFromSimpleMetaBundle(const Engine::SimpleMetaBundle &bundle) {
-
-  d->valid_ = true;
-
-  bool minor = true;
-
-  if (d->init_from_file_ || is_collection_song() || d->url_.isLocalFile()) {
-    // This Song was already loaded using taglib. Our tags are probably better than the engine's.
-    if (title() != bundle.title && title().isEmpty() && !bundle.title.isEmpty()) {
-      set_title(bundle.title);
-      minor = false;
-    }
-    if (artist() != bundle.artist && artist().isEmpty() && !bundle.artist.isEmpty()) {
-      set_artist(bundle.artist);
-      minor = false;
-    }
-    if (album() != bundle.album && album().isEmpty() && !bundle.album.isEmpty()) {
-      set_album(bundle.album);
-      minor = false;
-    }
-    if (comment().isEmpty() && !bundle.comment.isEmpty()) set_comment(bundle.comment);
-    if (genre().isEmpty() && !bundle.genre.isEmpty()) set_genre(bundle.genre);
-    if (lyrics().isEmpty() && !bundle.lyrics.isEmpty()) set_lyrics(bundle.lyrics);
-  }
-  else {
-    if (title() != bundle.title && !bundle.title.isEmpty()) {
-      set_title(bundle.title);
-      minor = false;
-    }
-    if (artist() != bundle.artist && !bundle.artist.isEmpty()) {
-      set_artist(bundle.artist);
-      minor = false;
-    }
-    if (album() != bundle.album && !bundle.album.isEmpty()) {
-      set_album(bundle.album);
-      minor = false;
-    }
-    if (!bundle.comment.isEmpty()) set_comment(bundle.comment);
-    if (!bundle.genre.isEmpty()) set_genre(bundle.genre);
-    if (!bundle.lyrics.isEmpty()) set_lyrics(bundle.lyrics);
-  }
-
-  if (bundle.length > 0) set_length_nanosec(bundle.length);
-  if (bundle.year > 0) d->year_ = bundle.year;
-  if (bundle.track > 0) d->track_ = bundle.track;
-  if (bundle.filetype != FileType::Unknown) d->filetype_ = bundle.filetype;
-  if (bundle.samplerate > 0) d->samplerate_ = bundle.samplerate;
-  if (bundle.bitdepth > 0) d->bitdepth_ = bundle.bitdepth;
-  if (bundle.bitrate > 0) d->bitrate_ = bundle.bitrate;
-
-  return minor;
-
-}
-
 void Song::BindToQuery(SqlQuery *query) const {
 
   // Remember to bind these in the same order as kBindSpec
@@ -1396,8 +1617,10 @@ void Song::BindToQuery(SqlQuery *query) const {
   query->BindBoolValue(":compilation_off", d->compilation_off_);
   query->BindBoolValue(":compilation_effective", is_compilation());
 
+  query->BindBoolValue(":art_embedded", d->art_embedded_);
   query->BindUrlValue(":art_automatic", d->art_automatic_);
   query->BindUrlValue(":art_manual", d->art_manual_);
+  query->BindBoolValue(":art_unset", d->art_unset_);
 
   query->BindStringValue(":effective_albumartist", effective_albumartist());
   query->BindIntValue(":effective_originalyear", effective_originalyear());
@@ -1405,6 +1628,20 @@ void Song::BindToQuery(SqlQuery *query) const {
   query->BindValue(":cue_path", d->cue_path_);
 
   query->BindFloatValue(":rating", d->rating_);
+
+  query->BindStringValue(":acoustid_id", d->acoustid_id_);
+  query->BindStringValue(":acoustid_fingerprint", d->acoustid_fingerprint_);
+
+  query->BindStringValue(":musicbrainz_album_artist_id", d->musicbrainz_album_artist_id_);
+  query->BindStringValue(":musicbrainz_artist_id", d->musicbrainz_artist_id_);
+  query->BindStringValue(":musicbrainz_original_artist_id", d->musicbrainz_original_artist_id_);
+  query->BindStringValue(":musicbrainz_album_id", d->musicbrainz_album_id_);
+  query->BindStringValue(":musicbrainz_original_album_id", d->musicbrainz_original_album_id_);
+  query->BindStringValue(":musicbrainz_recording_id", d->musicbrainz_recording_id_);
+  query->BindStringValue(":musicbrainz_track_id", d->musicbrainz_track_id_);
+  query->BindStringValue(":musicbrainz_disc_id", d->musicbrainz_disc_id_);
+  query->BindStringValue(":musicbrainz_release_group_id", d->musicbrainz_release_group_id_);
+  query->BindStringValue(":musicbrainz_work_id", d->musicbrainz_work_id_);
 
 }
 
@@ -1420,197 +1657,6 @@ void Song::BindToFtsQuery(SqlQuery *query) const {
   query->BindValue(":ftsgenre", d->genre_);
   query->BindValue(":ftscomment", d->comment_);
 
-}
-
-QString Song::PrettyTitle() const {
-
-  QString title(d->title_);
-
-  if (title.isEmpty()) title = d->basefilename_;
-  if (title.isEmpty()) title = d->url_.toString();
-
-  return title;
-
-}
-
-QString Song::PrettyTitleWithArtist() const {
-
-  QString title(PrettyTitle());
-
-  if (!d->artist_.isEmpty()) title = d->artist_ + " - " + title;
-
-  return title;
-
-}
-
-QString Song::PrettyLength() const {
-
-  if (length_nanosec() == -1) return QString();
-
-  return Utilities::PrettyTimeNanosec(length_nanosec());
-
-}
-
-QString Song::PrettyYear() const {
-
-  if (d->year_ == -1) return QString();
-
-  return QString::number(d->year_);
-
-}
-
-QString Song::PrettyOriginalYear() const {
-
-  if (effective_originalyear() == -1) return QString();
-
-  return QString::number(effective_originalyear());
-
-}
-
-QString Song::TitleWithCompilationArtist() const {
-
-  QString title(d->title_);
-
-  if (title.isEmpty()) title = d->basefilename_;
-
-  if (is_compilation() && !d->artist_.isEmpty() && !d->artist_.contains("various", Qt::CaseInsensitive)) title = d->artist_ + " - " + title;
-
-  return title;
-
-}
-
-QString Song::SampleRateBitDepthToText() const {
-
-  if (d->samplerate_ == -1) return QString("");
-  if (d->bitdepth_ == -1) return QString("%1 hz").arg(d->samplerate_);
-
-  return QString("%1 hz / %2 bit").arg(d->samplerate_).arg(d->bitdepth_);
-
-}
-
-QString Song::PrettyRating() const {
-
-  float rating = d->rating_;
-
-  if (rating == -1.0F) return "0";
-
-  return QString::number(static_cast<int>(rating * 100));
-
-}
-
-bool Song::IsMetadataEqual(const Song &other) const {
-
-  return d->title_ == other.d->title_ &&
-         d->album_ == other.d->album_ &&
-         d->artist_ == other.d->artist_ &&
-         d->albumartist_ == other.d->albumartist_ &&
-         d->track_ == other.d->track_ &&
-         d->disc_ == other.d->disc_ &&
-         d->year_ == other.d->year_ &&
-         d->originalyear_ == other.d->originalyear_ &&
-         d->genre_ == other.d->genre_ &&
-         d->compilation_ == other.d->compilation_ &&
-         d->composer_ == other.d->composer_ &&
-         d->performer_ == other.d->performer_ &&
-         d->grouping_ == other.d->grouping_ &&
-         d->comment_ == other.d->comment_ &&
-         d->lyrics_ == other.d->lyrics_ &&
-         d->artist_id_ == other.d->artist_id_ &&
-         d->album_id_ == other.d->album_id_ &&
-         d->song_id_ == other.d->song_id_ &&
-         d->beginning_ == other.d->beginning_ &&
-         length_nanosec() == other.length_nanosec() &&
-         d->bitrate_ == other.d->bitrate_ &&
-         d->samplerate_ == other.d->samplerate_ &&
-         d->bitdepth_ == other.d->bitdepth_ &&
-         d->cue_path_ == other.d->cue_path_;
-}
-
-bool Song::IsStatisticsEqual(const Song &other) const {
-
-  return d->playcount_ == other.d->playcount_ &&
-         d->skipcount_ == other.d->skipcount_ &&
-         d->lastplayed_ == other.d->lastplayed_;
-
-}
-
-bool Song::IsRatingEqual(const Song &other) const {
-
-  return d->rating_ == other.d->rating_;
-
-}
-
-bool Song::IsFingerprintEqual(const Song &other) const {
-
-  return d->fingerprint_ == other.d->fingerprint_;
-
-}
-
-bool Song::IsArtEqual(const Song &other) const {
-
-  return d->art_automatic_ == other.d->art_automatic_ &&
-         d->art_manual_ == other.d->art_manual_;
-
-}
-
-bool Song::IsAllMetadataEqual(const Song &other) const {
-
-  return IsMetadataEqual(other) &&
-         IsStatisticsEqual(other) &&
-         IsRatingEqual(other) &&
-         IsFingerprintEqual(other) &&
-         IsArtEqual(other);
-
-}
-
-bool Song::IsEditable() const {
-  return d->valid_ && d->url_.isValid() && (d->url_.isLocalFile() || d->source_ == Source::Stream) && !has_cue();
-}
-
-bool Song::operator==(const Song &other) const {
-  return source() == other.source() && url() == other.url() && beginning_nanosec() == other.beginning_nanosec();
-}
-
-bool Song::operator!=(const Song &other) const {
-  return source() != other.source() || url() != other.url() || beginning_nanosec() != other.beginning_nanosec();
-}
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-size_t qHash(const Song &song) {
-#else
-uint qHash(const Song &song) {
-#endif
-  // Should compare the same fields as operator==
-  return qHash(song.url().toString()) ^ qHash(song.beginning_nanosec());
-}
-
-bool Song::IsSimilar(const Song &other) const {
-  return title().compare(other.title(), Qt::CaseInsensitive) == 0 &&
-         artist().compare(other.artist(), Qt::CaseInsensitive) == 0 &&
-         album().compare(other.album(), Qt::CaseInsensitive) == 0;
-}
-
-size_t HashSimilar(const Song &song) {
-  // Should compare the same fields as function IsSimilar
-  return qHash(song.title().toLower()) ^ qHash(song.artist().toLower()) ^ qHash(song.album().toLower());
-}
-
-bool Song::IsOnSameAlbum(const Song &other) const {
-
-  if (is_compilation() != other.is_compilation()) return false;
-
-  if (has_cue() && other.has_cue() && cue_path() == other.cue_path()) {
-    return true;
-  }
-
-  if (is_compilation() && album() == other.album()) return true;
-
-  return effective_album() == other.effective_album() && effective_albumartist() == other.effective_albumartist();
-
-}
-
-QString Song::AlbumKey() const {
-  return QString("%1|%2|%3").arg(is_compilation() ? "_compilation" : effective_albumartist(), has_cue() ? cue_path() : "", effective_album());
 }
 
 void Song::ToXesam(QVariantMap *map) const {
@@ -1640,6 +1686,60 @@ void Song::ToXesam(QVariantMap *map) const {
 
 }
 
+bool Song::MergeFromEngineMetadata(const EngineMetadata &engine_metadata) {
+
+  d->valid_ = true;
+
+  bool minor = true;
+
+  if (d->init_from_file_ || is_collection_song() || d->url_.isLocalFile()) {
+    // This Song was already loaded using taglib. Our tags are probably better than the engine's.
+    if (title() != engine_metadata.title && title().isEmpty() && !engine_metadata.title.isEmpty()) {
+      set_title(engine_metadata.title);
+      minor = false;
+    }
+    if (artist() != engine_metadata.artist && artist().isEmpty() && !engine_metadata.artist.isEmpty()) {
+      set_artist(engine_metadata.artist);
+      minor = false;
+    }
+    if (album() != engine_metadata.album && album().isEmpty() && !engine_metadata.album.isEmpty()) {
+      set_album(engine_metadata.album);
+      minor = false;
+    }
+    if (comment().isEmpty() && !engine_metadata.comment.isEmpty()) set_comment(engine_metadata.comment);
+    if (genre().isEmpty() && !engine_metadata.genre.isEmpty()) set_genre(engine_metadata.genre);
+    if (lyrics().isEmpty() && !engine_metadata.lyrics.isEmpty()) set_lyrics(engine_metadata.lyrics);
+  }
+  else {
+    if (title() != engine_metadata.title && !engine_metadata.title.isEmpty()) {
+      set_title(engine_metadata.title);
+      minor = false;
+    }
+    if (artist() != engine_metadata.artist && !engine_metadata.artist.isEmpty()) {
+      set_artist(engine_metadata.artist);
+      minor = false;
+    }
+    if (album() != engine_metadata.album && !engine_metadata.album.isEmpty()) {
+      set_album(engine_metadata.album);
+      minor = false;
+    }
+    if (!engine_metadata.comment.isEmpty()) set_comment(engine_metadata.comment);
+    if (!engine_metadata.genre.isEmpty()) set_genre(engine_metadata.genre);
+    if (!engine_metadata.lyrics.isEmpty()) set_lyrics(engine_metadata.lyrics);
+  }
+
+  if (engine_metadata.length > 0) set_length_nanosec(engine_metadata.length);
+  if (engine_metadata.year > 0) d->year_ = engine_metadata.year;
+  if (engine_metadata.track > 0) d->track_ = engine_metadata.track;
+  if (engine_metadata.filetype != FileType::Unknown) d->filetype_ = engine_metadata.filetype;
+  if (engine_metadata.samplerate > 0) d->samplerate_ = engine_metadata.samplerate;
+  if (engine_metadata.bitdepth > 0) d->bitdepth_ = engine_metadata.bitdepth;
+  if (engine_metadata.bitrate > 0) d->bitrate_ = engine_metadata.bitrate;
+
+  return minor;
+
+}
+
 void Song::MergeUserSetData(const Song &other, const bool merge_playcount, const bool merge_rating) {
 
   if (merge_playcount && other.playcount() > 0) {
@@ -1653,7 +1753,26 @@ void Song::MergeUserSetData(const Song &other, const bool merge_playcount, const
   set_skipcount(other.skipcount());
   set_lastplayed(other.lastplayed());
   set_art_manual(other.art_manual());
+  set_art_unset(other.art_unset());
   set_compilation_on(other.compilation_on());
   set_compilation_off(other.compilation_off());
 
+}
+
+QString Song::AlbumKey() const {
+  return QString("%1|%2|%3").arg(is_compilation() ? "_compilation" : effective_albumartist(), has_cue() ? cue_path() : "", effective_album());
+}
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+size_t qHash(const Song &song) {
+#else
+uint qHash(const Song &song) {
+#endif
+  // Should compare the same fields as operator==
+  return qHash(song.url().toString()) ^ qHash(song.beginning_nanosec());
+}
+
+size_t HashSimilar(const Song &song) {
+  // Should compare the same fields as function IsSimilar
+  return qHash(song.title().toLower()) ^ qHash(song.artist().toLower()) ^ qHash(song.album().toLower());
 }

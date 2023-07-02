@@ -74,6 +74,7 @@ PlayingWidget::PlayingWidget(QWidget *parent)
       active_(false),
       small_ideal_height_(0),
       total_height_(0),
+      desired_height_(0),
       fit_width_(false),
       timeline_show_hide_(new QTimeLine(500, this)),
       timeline_fade_(new QTimeLine(1000, this)),
@@ -203,7 +204,7 @@ void PlayingWidget::set_ideal_height(const int height) {
 }
 
 QSize PlayingWidget::sizeHint() const {
-  return QSize(cover_loader_options_.desired_height_, total_height_);
+  return QSize(desired_height_, total_height_);
 }
 
 void PlayingWidget::CreateModeAction(const Mode mode, const QString &text, QActionGroup *group) {
@@ -303,9 +304,16 @@ void PlayingWidget::SetImage(const QImage &image) {
 
   if (enabled_ && visible_ && active_) {
     // Cache the current pixmap so we can fade between them
-    QSize psize(size());
-    if (size().height() <= 0) psize.setHeight(total_height_);
+    QSize psize;
+    psize.setWidth(static_cast<int>(size().width() * devicePixelRatioF()));
+    if (size().height() > 0) {
+      psize.setHeight(static_cast<int>(size().height() * devicePixelRatioF()));
+    }
+    else {
+      psize.setHeight(static_cast<int>(total_height_ * devicePixelRatioF()));
+    }
     pixmap_previous_track_ = QPixmap(psize);
+    pixmap_previous_track_.setDevicePixelRatio(devicePixelRatioF());
     pixmap_previous_track_.fill(palette().window().color());
     pixmap_previous_track_opacity_ = 1.0;
     QPainter p(&pixmap_previous_track_);
@@ -333,7 +341,7 @@ void PlayingWidget::SetImage(const QImage &image) {
 
 void PlayingWidget::ScaleCover() {
 
-  QImage image = ImageUtils::ScaleAndPad(image_original_, cover_loader_options_.scale_output_image_, cover_loader_options_.pad_output_image_, cover_loader_options_.desired_height_);
+  QImage image = ImageUtils::ScaleImage(image_original_, QSize(desired_height_, desired_height_), devicePixelRatioF(), true);
   if (image.isNull()) pixmap_cover_ = QPixmap();
   else pixmap_cover_ = QPixmap::fromImage(image);
   update();
@@ -363,13 +371,13 @@ void PlayingWidget::UpdateHeight() {
 
   switch (mode_) {
     case Mode::SmallSongDetails:
-      cover_loader_options_.desired_height_ = small_ideal_height_;
+      desired_height_ = small_ideal_height_;
       total_height_ = small_ideal_height_;
       break;
     case Mode::LargeSongDetails:
-      if (fit_width_) cover_loader_options_.desired_height_ = width();
-      else cover_loader_options_.desired_height_ = qMin(kMaxCoverSize, width());
-      total_height_ = kTopBorder + cover_loader_options_.desired_height_ + kBottomOffset + static_cast<int>(details_->size().height());
+      if (fit_width_) desired_height_ = width();
+      else desired_height_ = qMin(kMaxCoverSize, width());
+      total_height_ = kTopBorder + desired_height_ + kBottomOffset + static_cast<int>(details_->size().height());
       break;
   }
 
@@ -399,7 +407,7 @@ void PlayingWidget::UpdateDetailsText() {
       html += "<p>";
       break;
     case Mode::LargeSongDetails:
-      details_->setTextWidth(cover_loader_options_.desired_height_);
+      details_->setTextWidth(desired_height_);
       html += "<p align=center>";
       break;
   }
@@ -454,7 +462,7 @@ void PlayingWidget::DrawContents(QPainter *p) {
       // Work out how high the text is going to be
       const int text_height = static_cast<int>(details_->size().height());
       const int cover_size = fit_width_ ? width() : qMin(kMaxCoverSize, width());
-      const int x_offset = (width() - cover_loader_options_.desired_height_) / 2;
+      const int x_offset = (width() - desired_height_) / 2;
 
       // Draw the cover
       p->drawPixmap(x_offset, kTopBorder, cover_size, cover_size, pixmap_cover_);

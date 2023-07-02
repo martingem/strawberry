@@ -44,7 +44,6 @@ class ContextSettingsPage : public SettingsPage {
 
   enum class ContextSettingsOrder {
     ALBUM,
-    ENGINE_AND_DEVICE,
     TECHNICAL_DATA,
     SONG_LYRICS,
     SEARCH_COVER,
@@ -56,6 +55,7 @@ class ContextSettingsPage : public SettingsPage {
   static const char *kSettingsTitleFmt;
   static const char *kSettingsSummaryFmt;
   static const char *kSettingsGroupEnable[static_cast<int>(ContextSettingsOrder::NELEMS)];
+  static const char kDefaultFontFamily[];
   static const qreal kDefaultFontSizeHeadline;
 
   void Load() override;

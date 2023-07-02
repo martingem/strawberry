@@ -32,17 +32,15 @@
 #include "core/taskmanager.h"
 #include "core/logging.h"
 #include "utilities/timeconstants.h"
-#include "engine_fwd.h"
 #include "enginebase.h"
-#include "enginetype.h"
 #include "vlcengine.h"
 #include "vlcscopedref.h"
 
 VLCEngine::VLCEngine(TaskManager *task_manager, QObject *parent)
-    : Engine::Base(Engine::EngineType::VLC, parent),
+    : EngineBase(parent),
       instance_(nullptr),
       player_(nullptr),
-      state_(Engine::State::Empty) {
+      state_(State::Empty) {
 
   Q_UNUSED(task_manager);
 
@@ -52,7 +50,7 @@ VLCEngine::VLCEngine(TaskManager *task_manager, QObject *parent)
 
 VLCEngine::~VLCEngine() {
 
-  if (state_ == Engine::State::Playing || state_ == Engine::State::Paused) {
+  if (state_ == State::Playing || state_ == State::Paused) {
     libvlc_media_player_stop(player_);
   }
 
@@ -100,9 +98,9 @@ bool VLCEngine::Init() {
 
 }
 
-bool VLCEngine::Load(const QUrl &stream_url, const QUrl &original_url, const Engine::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec) {
+bool VLCEngine::Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec) {
 
-  Q_UNUSED(original_url);
+  Q_UNUSED(media_url);
   Q_UNUSED(change);
   Q_UNUSED(force_stop_at_end);
   Q_UNUSED(beginning_nanosec);
@@ -197,7 +195,7 @@ void VLCEngine::SetVolumeSW(const uint percent) {
 
 qint64 VLCEngine::position_nanosec() const {
 
-  if (state_ == Engine::State::Empty) return 0;
+  if (state_ == State::Empty) return 0;
   const qint64 result = (position() * kNsecPerMsec);
   return qMax(0LL, result);
 
@@ -205,7 +203,7 @@ qint64 VLCEngine::position_nanosec() const {
 
 qint64 VLCEngine::length_nanosec() const {
 
-  if (state_ == Engine::State::Empty) return 0;
+  if (state_ == State::Empty) return 0;
   const qint64 result = (end_nanosec_ - static_cast<qint64>(beginning_nanosec_));
   if (result > 0) {
     return result;
@@ -219,30 +217,35 @@ qint64 VLCEngine::length_nanosec() const {
 
 EngineBase::OutputDetailsList VLCEngine::GetOutputsList() const {
 
-  PluginDetailsList plugins = GetPluginList();
-  OutputDetailsList ret;
-  ret.reserve(plugins.count());
-  for (const PluginDetails &plugin : plugins) {
-    OutputDetails output;
-    output.name = plugin.name;
-    output.description = plugin.description;
-    if (plugin.name == "auto") output.iconname = "soundcard";
-    else if ((plugin.name == "alsa")||(plugin.name == "oss")) output.iconname = "alsa";
-    else if (plugin.name== "jack") output.iconname = "jack";
-    else if (plugin.name == "pulse") output.iconname = "pulseaudio";
-    else if (plugin.name == "afile") output.iconname = "document-new";
-    else output.iconname = "soundcard";
-    ret.append(output);
-  }
+  OutputDetailsList outputs;
+  OutputDetails output_auto;
+  output_auto.name = "auto";
+  output_auto.description = "Automatically detected";
+  outputs << output_auto;
 
-  return ret;
+  libvlc_audio_output_t *audio_output_list = libvlc_audio_output_list_get(instance_);
+  for (libvlc_audio_output_t *audio_output = audio_output_list; audio_output; audio_output = audio_output->p_next) {
+    OutputDetails output;
+    output.name = QString::fromUtf8(audio_output->psz_name);
+    output.description = QString::fromUtf8(audio_output->psz_description);
+    if (output.name == "auto") output.iconname = "soundcard";
+    else if ((output.name == "alsa")||(output.name == "oss")) output.iconname = "alsa";
+    else if (output.name== "jack") output.iconname = "jack";
+    else if (output.name == "pulse") output.iconname = "pulseaudio";
+    else if (output.name == "afile") output.iconname = "document-new";
+    else output.iconname = "soundcard";
+    outputs << output;
+  }
+  libvlc_audio_output_list_release(audio_output_list);
+
+  return outputs;
 
 }
 
 bool VLCEngine::ValidOutput(const QString &output) {
 
-  PluginDetailsList plugins = GetPluginList();
-  return std::any_of(plugins.begin(), plugins.end(), [output](const PluginDetails &plugin) { return plugin.name == output; });
+  const OutputDetailsList output_details = GetOutputsList();
+  return std::any_of(output_details.begin(), output_details.end(), [output](const OutputDetails &output_detail) { return output_detail.name == output; });
 
 }
 
@@ -292,61 +295,35 @@ void VLCEngine::StateChangedCallback(const libvlc_event_t *e, void *data) {
       break;
 
     case libvlc_MediaPlayerStopped:{
-      const Engine::State state = engine->state_;
-      engine->state_ = Engine::State::Empty;
-      if (state == Engine::State::Playing) {
+      const EngineBase::State state = engine->state_;
+      engine->state_ = EngineBase::State::Empty;
+      if (state == EngineBase::State::Playing) {
         emit engine->StateChanged(engine->state_);
       }
       break;
     }
 
     case libvlc_MediaPlayerEncounteredError:
-      engine->state_ = Engine::State::Error;
+      engine->state_ = EngineBase::State::Error;
       emit engine->StateChanged(engine->state_);
       emit engine->FatalError();
       break;
 
     case libvlc_MediaPlayerPlaying:
-      engine->state_ = Engine::State::Playing;
+      engine->state_ = EngineBase::State::Playing;
       emit engine->StateChanged(engine->state_);
       break;
 
     case libvlc_MediaPlayerPaused:
-      engine->state_ = Engine::State::Paused;
+      engine->state_ = EngineBase::State::Paused;
       emit engine->StateChanged(engine->state_);
       break;
 
     case libvlc_MediaPlayerEndReached:
-      engine->state_ = Engine::State::Idle;
+      engine->state_ = EngineBase::State::Idle;
       emit engine->TrackEnded();
       break;
   }
-
-}
-
-EngineBase::PluginDetailsList VLCEngine::GetPluginList() const {
-
-  PluginDetailsList ret;
-  libvlc_audio_output_t *audio_output_list = libvlc_audio_output_list_get(instance_);
-
-  {
-    PluginDetails details;
-    details.name = "auto";
-    details.description = "Automatically detected";
-    ret << details;
-  }
-
-  for (libvlc_audio_output_t *audio_output = audio_output_list; audio_output; audio_output = audio_output->p_next) {
-    PluginDetails details;
-    details.name = QString::fromUtf8(audio_output->psz_name);
-    details.description = QString::fromUtf8(audio_output->psz_description);
-    ret << details;
-    //GetDevicesList(audio_output->psz_name);
-  }
-
-  libvlc_audio_output_list_release(audio_output_list);
-
-  return ret;
 
 }
 

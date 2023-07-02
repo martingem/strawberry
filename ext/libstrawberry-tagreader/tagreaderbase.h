@@ -1,5 +1,5 @@
 /* This file is part of Strawberry.
-   Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+   Copyright 2018-2023, Jonas Kvinge <jonas@jkvinge.net>
 
    Strawberry is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -27,9 +27,6 @@
 
 #include "tagreadermessages.pb.h"
 
-#define QStringFromStdString(x) QString::fromUtf8((x).data(), (x).size())
-#define DataCommaSizeFromQString(x) (x).toUtf8().constData(), (x).toUtf8().length()
-
 /*
  * This class holds all useful methods to read and write tags from/to files.
  * You should not use it directly in the main process but rather use a TagReaderWorker process (using TagReaderClient)
@@ -39,24 +36,33 @@ class TagReaderBase {
   explicit TagReaderBase();
   ~TagReaderBase();
 
+  class Cover {
+   public:
+    explicit Cover(const QByteArray &_data = QByteArray(), const QString &_mime_type = QString()) : data(_data), mime_type(_mime_type) {}
+    QByteArray data;
+    QString mime_type;
+    QString error;
+  };
+
   virtual bool IsMediaFile(const QString &filename) const = 0;
 
   virtual bool ReadFile(const QString &filename, spb::tagreader::SongMetadata *song) const = 0;
-  virtual bool SaveFile(const QString &filename, const spb::tagreader::SongMetadata &song) const = 0;
+  virtual bool SaveFile(const spb::tagreader::SaveFileRequest &request) const = 0;
 
   virtual QByteArray LoadEmbeddedArt(const QString &filename) const = 0;
-  virtual bool SaveEmbeddedArt(const QString &filename, const QByteArray &data) = 0;
+  virtual bool SaveEmbeddedArt(const spb::tagreader::SaveEmbeddedArtRequest &request) const = 0;
 
   virtual bool SaveSongPlaycountToFile(const QString &filename, const spb::tagreader::SongMetadata &song) const = 0;
   virtual bool SaveSongRatingToFile(const QString &filename, const spb::tagreader::SongMetadata &song) const = 0;
 
-  static void Decode(const QString &tag, std::string *output);
-
   static float ConvertPOPMRating(const int POPM_rating);
   static int ConvertToPOPMRating(const float rating);
 
- protected:
-  static const std::string kEmbeddedCover;
+  static Cover LoadCoverFromRequest(const spb::tagreader::SaveFileRequest &request);
+  static Cover LoadCoverFromRequest(const spb::tagreader::SaveEmbeddedArtRequest &request);
+
+ private:
+  static Cover LoadCoverFromRequest(const QString &song_filename, const QString &cover_filename, QByteArray cover_data, QString cover_mime_type);
 
   Q_DISABLE_COPY(TagReaderBase)
 };

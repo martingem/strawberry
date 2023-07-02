@@ -99,11 +99,7 @@ void PlaylistProxyStyle::drawControl(ControlElement element, const QStyleOption 
     const QFontMetrics &font_metrics = header_option->fontMetrics;
 
     // Spaces added to make transition less abrupt
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 11, 0))
     if (rect.width() < font_metrics.horizontalAdvance(text + "  ")) {
-#else
-    if (rect.width() < font_metrics.width(text + "  ")) {
-#endif
       const Playlist::Column column = static_cast<Playlist::Column>(header_option->section);
       QStyleOptionHeader new_option(*header_option);
       new_option.text = Playlist::abbreviated_column_name(column);
@@ -183,9 +179,7 @@ PlaylistView::PlaylistView(QWidget *parent)
 
   setHeader(header_);
   header_->setSectionsMovable(true);
-#if QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
   header_->setFirstSectionMovable(true);
-#endif
   header_->setSortIndicator(Playlist::Column_Title, Qt::AscendingOrder);
 
   setStyle(style_);
@@ -1472,13 +1466,9 @@ void PlaylistView::AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResu
   if ((song != Song() && song_playing_ == Song()) || result.album_cover.image == current_song_cover_art_) return;
 
   current_song_cover_art_ = result.album_cover.image;
+
   if (background_image_type_ == AppearanceSettingsPage::BackgroundImageType::Album) {
-    if (song.art_automatic().isEmpty() && song.art_manual().isEmpty()) {
-      set_background_image(QImage());
-    }
-    else {
-      set_background_image(current_song_cover_art_);
-    }
+    set_background_image(result.success && result.type != AlbumCoverLoaderResult::Type::None && result.type != AlbumCoverLoaderResult::Type::Unset ? current_song_cover_art_ : QImage());
     force_background_redraw_ = true;
     update();
   }

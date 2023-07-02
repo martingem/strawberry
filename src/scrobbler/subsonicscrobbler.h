@@ -34,13 +34,14 @@
 #include "scrobblerservice.h"
 
 class Application;
+class AudioScrobbler;
 class SubsonicService;
 
 class SubsonicScrobbler : public ScrobblerService {
   Q_OBJECT
 
  public:
-  explicit SubsonicScrobbler(Application *app, QObject *parent = nullptr);
+  explicit SubsonicScrobbler(AudioScrobbler *scrobbler, SubsonicService *service, QObject *parent = nullptr);
 
   static const char *kName;
 
@@ -52,7 +53,6 @@ class SubsonicScrobbler : public ScrobblerService {
   void UpdateNowPlaying(const Song &song) override;
   void ClearPlaying() override;
   void Scrobble(const Song &song) override;
-  void Error(const QString &error, const QVariant &debug = QVariant()) override;
 
   void StartSubmit(const bool initial = false) override { Q_UNUSED(initial) }
   void Submitted() override { submitted_ = true; }
@@ -63,7 +63,7 @@ class SubsonicScrobbler : public ScrobblerService {
   void Submit() override;
 
  private:
-  Application *app_;
+  AudioScrobbler *scrobbler_;
   SubsonicService *service_;
   bool enabled_;
   bool submitted_;

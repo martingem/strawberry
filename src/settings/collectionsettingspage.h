@@ -50,17 +50,6 @@ class CollectionSettingsPage : public SettingsPage {
   static const int kSettingsCacheSizeDefault;
   static const int kSettingsDiskCacheSizeDefault;
 
-  enum class SaveCoverType {
-    Cache = 1,
-    Album = 2,
-    Embedded = 3
-  };
-
-  enum class SaveCoverFilename {
-    Hash = 1,
-    Pattern = 2
-  };
-
   enum class CacheSizeUnit {
     KB,
     MB,
@@ -78,7 +67,6 @@ class CollectionSettingsPage : public SettingsPage {
   void CurrentRowChanged(const QModelIndex &idx);
   void SongTrackingToggled();
   void DiskCacheEnable(const int state);
-  void CoverSaveInAlbumDirChanged();
   void ClearPixmapDiskCache();
   void CacheSizeUnitChanged(int index);
   void DiskCacheSizeUnitChanged(int index);

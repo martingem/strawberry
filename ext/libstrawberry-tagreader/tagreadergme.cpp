@@ -84,7 +84,8 @@ void GME::SPC::Read(const QFileInfo &file_info, spb::tagreader::SongMetadata *so
   //  Make sure to check id6 documentation before changing the read values!
 
   file.seek(HAS_ID6_OFFSET);
-  bool has_id6 = (file.read(1)[0] == static_cast<char>(xID6_STATUS::ON));
+  const QByteArray id6_status = file.read(1);
+  const bool has_id6 = id6_status.length() >= 1 && id6_status[0] == static_cast<char>(xID6_STATUS::ON);
 
   file.seek(SONG_TITLE_OFFSET);
   song_info->set_title(QString::fromLatin1(file.read(32)).toStdString());
@@ -156,10 +157,10 @@ void GME::SPC::Read(const QFileInfo &file_info, spb::tagreader::SongMetadata *so
     TagLib::Tag *tag = ape.tag();
     if (!tag) return;
 
-    TagReaderTagLib::Decode(tag->artist(), song_info->mutable_artist());
-    TagReaderTagLib::Decode(tag->album(), song_info->mutable_album());
-    TagReaderTagLib::Decode(tag->title(), song_info->mutable_title());
-    TagReaderTagLib::Decode(tag->genre(), song_info->mutable_genre());
+    TagReaderTagLib::TStringToStdString(tag->artist(), song_info->mutable_artist());
+    TagReaderTagLib::TStringToStdString(tag->album(), song_info->mutable_album());
+    TagReaderTagLib::TStringToStdString(tag->title(), song_info->mutable_title());
+    TagReaderTagLib::TStringToStdString(tag->genre(), song_info->mutable_genre());
     song_info->set_track(tag->track());
     song_info->set_year(tag->year());
   }
@@ -278,7 +279,7 @@ bool TagReaderGME::ReadFile(const QString &filename, spb::tagreader::SongMetadat
   return GME::ReadFile(fileinfo, song);
 }
 
-bool TagReaderGME::SaveFile(const QString&, const spb::tagreader::SongMetadata&) const {
+bool TagReaderGME::SaveFile(const spb::tagreader::SaveFileRequest&) const {
   return false;
 }
 
@@ -286,7 +287,7 @@ QByteArray TagReaderGME::LoadEmbeddedArt(const QString&) const {
   return QByteArray();
 }
 
-bool TagReaderGME::SaveEmbeddedArt(const QString&, const QByteArray&) {
+bool TagReaderGME::SaveEmbeddedArt(const spb::tagreader::SaveEmbeddedArtRequest&) const {
   return false;
 }
 

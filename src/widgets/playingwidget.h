@@ -35,7 +35,6 @@
 #include <QMovie>
 
 #include "core/song.h"
-#include "covermanager/albumcoverloaderoptions.h"
 
 class QTimeLine;
 class QTextDocument;
@@ -68,7 +67,7 @@ class PlayingWidget : public QWidget {
   bool show_above_status_bar() const { return above_statusbar_action_->isChecked(); }
 
  signals:
-  void ShowAboveStatusBarChanged(bool above);
+  void ShowAboveStatusBarChanged(const bool above);
 
  public slots:
   void Playing();
@@ -123,8 +122,8 @@ class PlayingWidget : public QWidget {
   bool playing_;
   bool active_;
   int small_ideal_height_;
-  AlbumCoverLoaderOptions cover_loader_options_;
   int total_height_;
+  int desired_height_;
   bool fit_width_;
   QTimeLine *timeline_show_hide_;
   QTimeLine *timeline_fade_;

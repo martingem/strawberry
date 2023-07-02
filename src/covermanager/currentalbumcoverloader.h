@@ -48,15 +48,18 @@ class CurrentAlbumCoverLoader : public QObject {
   const AlbumCoverLoaderOptions &options() const { return options_; }
   const Song &last_song() const { return last_song_; }
 
+  void ReloadSettingsAsync();
+
  public slots:
+  void ReloadSettings();
   void LoadAlbumCover(const Song &song);
 
  signals:
-  void AlbumCoverLoaded(Song song, AlbumCoverLoaderResult result);
-  void ThumbnailLoaded(Song song, QUrl thumbnail_uri, QImage image);
+  void AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResult &result);
+  void ThumbnailLoaded(const Song &song, const QUrl &thumbnail_uri, const QImage &image);
 
  private slots:
-  void TempAlbumCoverLoaded(const quint64 id, AlbumCoverLoaderResult result);
+  void AlbumCoverReady(const quint64 id, AlbumCoverLoaderResult result);
 
  private:
   Application *app_;

@@ -20,7 +20,9 @@
 #include "config.h"
 
 #include <QObject>
+#include <QList>
 #include <QByteArray>
+#include <QByteArrayList>
 #include <QString>
 #include <QUrl>
 #include <QImage>
@@ -36,8 +38,9 @@
 #include "core/networkaccessmanager.h"
 #include "core/song.h"
 #include "core/application.h"
-#include "utilities/imageutils.h"
 #include "utilities/timeconstants.h"
+#include "utilities/imageutils.h"
+#include "utilities/coverutils.h"
 #include "qobuzservice.h"
 #include "qobuzurlhandler.h"
 #include "qobuzbaserequest.h"
@@ -1076,11 +1079,16 @@ void QobuzRequest::ParseSong(Song &song, const QJsonObject &json_obj, const Arti
 
   QString title = json_obj["title"].toString();
   int track = json_obj["track_number"].toInt();
+  int disc = 0;
   QString copyright = json_obj["copyright"].toString();
   qint64 duration = json_obj["duration"].toInt() * kNsecPerSec;
   //bool streamable = json_obj["streamable"].toBool();
   QString composer;
   QString performer;
+
+  if (json_obj.contains("media_number")) {
+    disc = json_obj["media_number"].toInt();
+  }
 
   Artist song_artist = album_artist;
   Album song_album = album;
@@ -1190,6 +1198,7 @@ void QobuzRequest::ParseSong(Song &song, const QJsonObject &json_obj, const Arti
   song.set_artist_id(song_artist.artist_id);
   song.set_album(song_album.album);
   song.set_artist(song_artist.artist);
+  song.set_disc(disc);
   if (!album_artist.artist.isEmpty() && album_artist.artist != song_artist.artist) {
     song.set_albumartist(album_artist.artist);
   }
@@ -1264,7 +1273,7 @@ void QobuzRequest::AddAlbumCoverRequest(const Song &song) {
 
   AlbumCoverRequest request;
   request.url = cover_url;
-  request.filename = app_->album_cover_loader()->CoverFilePath(song.source(), song.effective_albumartist(), song.effective_album(), song.album_id(), QString(), cover_url);
+  request.filename = CoverUtils::CoverFilePath(CoverOptions(), song.source(), song.effective_albumartist(), song.effective_album(), song.album_id(), QString(), cover_url);
   if (request.filename.isEmpty()) return;
 
   album_covers_requests_sent_.insert(cover_url, song.song_id());
@@ -1349,7 +1358,7 @@ void QobuzRequest::AlbumCoverReceived(QNetworkReply *reply, const QUrl &cover_ur
     return;
   }
 
-  QList<QByteArray> format_list = ImageUtils::ImageFormatsForMimeType(mimetype.toUtf8());
+  QByteArrayList format_list = QImageReader::imageFormatsForMimeType(mimetype.toUtf8());
   char *format = nullptr;
   if (!format_list.isEmpty()) {
     format = format_list.first().data();

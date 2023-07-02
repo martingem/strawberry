@@ -83,7 +83,7 @@ class AlbumCoverSearcher : public QDialog {
     Role_ImageData,
     Role_Image,
     Role_ImageDimensions,
-    Role_ImageSize,
+    Role_ImageSize
   };
 
   void Init(AlbumCoverFetcher *fetcher);
@@ -107,7 +107,6 @@ class AlbumCoverSearcher : public QDialog {
   QStandardItemModel *model_;
 
   QIcon no_cover_icon_;
-  AlbumCoverLoaderOptions options_;
   AlbumCoverFetcher *fetcher_;
 
   quint64 id_;

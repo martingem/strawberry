@@ -34,7 +34,7 @@
 #include <QString>
 #include <QSettings>
 
-#include "engine/engine_fwd.h"
+#include "engine/enginebase.h"
 #include "osd/osdbase.h"
 
 class QMainWindow;
@@ -139,7 +139,7 @@ class SettingsDialog : public QDialog {
 
  signals:
   void ReloadSettings();
-  void NotificationPreview(OSDBase::Behaviour, QString, QString);
+  void NotificationPreview(const OSDBase::Behaviour, const QString&, const QString&);
 
  private slots:
   void CurrentItemChanged(QTreeWidgetItem *item);

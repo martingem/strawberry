@@ -57,7 +57,7 @@ Funding developers is a way to contribute to open source projects you appreciate
   * Edit tags on audio files
   * Fetch tags from MusicBrainz
   * Album cover art from [Last.fm](https://www.last.fm/), [Musicbrainz](https://musicbrainz.org/), [Discogs](https://www.discogs.com/), [Musixmatch](https://www.musixmatch.com/), [Deezer](https://www.deezer.com/), [Tidal](https://www.tidal.com/), [Qobuz](https://www.qobuz.com/) and [Spotify](https://www.spotify.com/)
-  * Song lyrics from [STANDS4](https://www.lyrics.com/), [Genius](https://genius.com/), [Musixmatch](https://www.musixmatch.com/), [ChartLyrics](http://www.chartlyrics.com/), [lyrics.ovh](https://lyrics.ovh/) and [lololyrics.com](https://www.lololyrics.com/)
+  * Song lyrics from [Lyrics.com](https://www.lyrics.com/), [Genius](https://genius.com/), [Musixmatch](https://www.musixmatch.com/), [ChartLyrics](http://www.chartlyrics.com/), [lyrics.ovh](https://lyrics.ovh/) and [lololyrics.com](https://www.lololyrics.com/)
   * Support for multiple backends
   * Audio analyzer
   * Audio equalizer
@@ -79,7 +79,7 @@ To build Strawberry from source you need the following installed on your system 
 * [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) or [pkgconf](https://github.com/pkgconf/pkgconf)
 * [Boost](https://www.boost.org/)
 * [GLib](https://developer.gnome.org/glib/)
-* [Qt 6 or Qt 5.9 or higher with components Core, Gui, Widgets, Concurrent, Network and Sql](https://www.qt.io/)
+* [Qt 6 or Qt 5.12 or higher with components Core, Gui, Widgets, Concurrent, Network and Sql](https://www.qt.io/)
 * [SQLite 3.9 or newer with FTS5](https://www.sqlite.org)
 * [Protobuf](https://developers.google.com/protocol-buffers/)
 * [ALSA (Required on Linux)](https://www.alsa-project.org/)
@@ -124,4 +124,3 @@ To compile on Windows with Visual Studio 2019 or 2022, see https://github.com/st
 ### :penguin:	Packaging status
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/strawberry.svg?exclude_unsupported=1)](https://repology.org/metapackage/strawberry/versions)
-

@@ -31,23 +31,23 @@
 #include <QString>
 #include <QUrl>
 
-#include "engine_fwd.h"
 #include "enginebase.h"
 
 struct libvlc_event_t;
 
 class TaskManager;
 
-class VLCEngine : public Engine::Base {
+class VLCEngine : public EngineBase {
   Q_OBJECT
 
  public:
   explicit VLCEngine(TaskManager *task_manager, QObject *parent = nullptr);
   ~VLCEngine() override;
 
+  Type type() const override { return Type::VLC; }
   bool Init() override;
-  Engine::State state() const override { return state_; }
-  bool Load(const QUrl &stream_url, const QUrl &original_url, const Engine::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec) override;
+  EngineBase::State state() const override { return state_; }
+  bool Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec) override;
   bool Play(const quint64 offset_nanosec) override;
   void Stop(const bool stop_after = false) override;
   void Pause() override;
@@ -70,7 +70,7 @@ class VLCEngine : public Engine::Base {
  private:
   libvlc_instance_t *instance_;
   libvlc_media_player_t *player_;
-  Engine::State state_;
+  State state_;
 
   bool Initialized() const { return (instance_ && player_); }
   uint position() const;
@@ -79,7 +79,6 @@ class VLCEngine : public Engine::Base {
   void AttachCallback(libvlc_event_manager_t *em, libvlc_event_type_t type, libvlc_callback_t callback);
   static void StateChangedCallback(const libvlc_event_t *e, void *data);
 
-  PluginDetailsList GetPluginList() const;
   void GetDevicesList(const QString &output) const;
 
 };

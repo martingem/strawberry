@@ -343,7 +343,8 @@ void OSDPretty::paintEvent(QPaintEvent*) {
 void OSDPretty::SetMessage(const QString &summary, const QString &message, const QImage &image) {
 
   if (!image.isNull()) {
-    QImage scaled_image = image.scaled(kMaxIconSize, kMaxIconSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    QImage scaled_image = image.scaled(static_cast<int>(kMaxIconSize * devicePixelRatioF()), static_cast<int>(kMaxIconSize * devicePixelRatioF()), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    scaled_image.setDevicePixelRatio(devicePixelRatioF());
     ui_->icon->setPixmap(QPixmap::fromImage(scaled_image));
     ui_->icon->show();
   }
@@ -541,13 +542,7 @@ void OSDPretty::mouseReleaseEvent(QMouseEvent *) {
 
 QScreen *OSDPretty::current_screen(const QPoint pos) const {
 
-  QScreen *screen(nullptr);
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 10, 0))
-  screen = QGuiApplication::screenAt(pos);
-#else
-  Q_UNUSED(pos)
-  if (window() && window()->windowHandle()) screen = window()->windowHandle()->screen();
-#endif
+  QScreen *screen = QGuiApplication::screenAt(pos);
   if (!screen) screen = QGuiApplication::primaryScreen();
 
   return screen;

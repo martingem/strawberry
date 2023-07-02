@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
 
 DELETE FROM schema_version;
 
-INSERT INTO schema_version (version) VALUES (15);
+INSERT INTO schema_version (version) VALUES (17);
 
 CREATE TABLE IF NOT EXISTS directories (
   path TEXT NOT NULL,
@@ -67,15 +67,31 @@ CREATE TABLE IF NOT EXISTS songs (
   compilation_off INTEGER NOT NULL DEFAULT 0,
   compilation_effective INTEGER NOT NULL DEFAULT 0,
 
+  art_embedded INTEGER DEFAULT 0,
   art_automatic TEXT,
   art_manual TEXT,
+  art_unset INTEGER DEFAULT 0,
 
   effective_albumartist TEXT,
   effective_originalyear INTEGER NOT NULL DEFAULT 0,
 
   cue_path TEXT,
 
-  rating INTEGER DEFAULT -1
+  rating INTEGER DEFAULT -1,
+
+  acoustid_id TEXT,
+  acoustid_fingerprint TEXT,
+
+  musicbrainz_album_artist_id TEXT,
+  musicbrainz_artist_id TEXT,
+  musicbrainz_original_artist_id TEXT,
+  musicbrainz_album_id TEXT,
+  musicbrainz_original_album_id TEXT,
+  musicbrainz_recording_id TEXT,
+  musicbrainz_track_id TEXT,
+  musicbrainz_disc_id TEXT,
+  musicbrainz_release_group_id TEXT,
+  musicbrainz_work_id TEXT
 
 );
 
@@ -129,15 +145,31 @@ CREATE TABLE IF NOT EXISTS subsonic_songs (
   compilation_off INTEGER NOT NULL DEFAULT 0,
   compilation_effective INTEGER NOT NULL DEFAULT 0,
 
+  art_embedded INTEGER DEFAULT 0,
   art_automatic TEXT,
   art_manual TEXT,
+  art_unset INTEGER DEFAULT 0,
 
   effective_albumartist TEXT,
   effective_originalyear INTEGER NOT NULL DEFAULT 0,
 
   cue_path TEXT,
 
-  rating INTEGER DEFAULT -1
+  rating INTEGER DEFAULT -1,
+
+  acoustid_id TEXT,
+  acoustid_fingerprint TEXT,
+
+  musicbrainz_album_artist_id TEXT,
+  musicbrainz_artist_id TEXT,
+  musicbrainz_original_artist_id TEXT,
+  musicbrainz_album_id TEXT,
+  musicbrainz_original_album_id TEXT,
+  musicbrainz_recording_id TEXT,
+  musicbrainz_track_id TEXT,
+  musicbrainz_disc_id TEXT,
+  musicbrainz_release_group_id TEXT,
+  musicbrainz_work_id TEXT
 
 );
 
@@ -191,15 +223,31 @@ CREATE TABLE IF NOT EXISTS tidal_artists_songs (
   compilation_off INTEGER NOT NULL DEFAULT 0,
   compilation_effective INTEGER NOT NULL DEFAULT 0,
 
+  art_embedded INTEGER DEFAULT 0,
   art_automatic TEXT,
   art_manual TEXT,
+  art_unset INTEGER DEFAULT 0,
 
   effective_albumartist TEXT,
   effective_originalyear INTEGER NOT NULL DEFAULT 0,
 
   cue_path TEXT,
 
-  rating INTEGER DEFAULT -1
+  rating INTEGER DEFAULT -1,
+
+  acoustid_id TEXT,
+  acoustid_fingerprint TEXT,
+
+  musicbrainz_album_artist_id TEXT,
+  musicbrainz_artist_id TEXT,
+  musicbrainz_original_artist_id TEXT,
+  musicbrainz_album_id TEXT,
+  musicbrainz_original_album_id TEXT,
+  musicbrainz_recording_id TEXT,
+  musicbrainz_track_id TEXT,
+  musicbrainz_disc_id TEXT,
+  musicbrainz_release_group_id TEXT,
+  musicbrainz_work_id TEXT
 
 );
 
@@ -253,15 +301,31 @@ CREATE TABLE IF NOT EXISTS tidal_albums_songs (
   compilation_off INTEGER NOT NULL DEFAULT 0,
   compilation_effective INTEGER NOT NULL DEFAULT 0,
 
+  art_embedded INTEGER DEFAULT 0,
   art_automatic TEXT,
   art_manual TEXT,
+  art_unset INTEGER DEFAULT 0,
 
   effective_albumartist TEXT,
   effective_originalyear INTEGER NOT NULL DEFAULT 0,
 
   cue_path TEXT,
 
-  rating INTEGER DEFAULT -1
+  rating INTEGER DEFAULT -1,
+
+  acoustid_id TEXT,
+  acoustid_fingerprint TEXT,
+
+  musicbrainz_album_artist_id TEXT,
+  musicbrainz_artist_id TEXT,
+  musicbrainz_original_artist_id TEXT,
+  musicbrainz_album_id TEXT,
+  musicbrainz_original_album_id TEXT,
+  musicbrainz_recording_id TEXT,
+  musicbrainz_track_id TEXT,
+  musicbrainz_disc_id TEXT,
+  musicbrainz_release_group_id TEXT,
+  musicbrainz_work_id TEXT
 
 );
 
@@ -315,15 +379,31 @@ CREATE TABLE IF NOT EXISTS tidal_songs (
   compilation_off INTEGER NOT NULL DEFAULT 0,
   compilation_effective INTEGER NOT NULL DEFAULT 0,
 
+  art_embedded INTEGER DEFAULT 0,
   art_automatic TEXT,
   art_manual TEXT,
+  art_unset INTEGER DEFAULT 0,
 
   effective_albumartist TEXT,
   effective_originalyear INTEGER NOT NULL DEFAULT 0,
 
   cue_path TEXT,
 
-  rating INTEGER DEFAULT -1
+  rating INTEGER DEFAULT -1,
+
+  acoustid_id TEXT,
+  acoustid_fingerprint TEXT,
+
+  musicbrainz_album_artist_id TEXT,
+  musicbrainz_artist_id TEXT,
+  musicbrainz_original_artist_id TEXT,
+  musicbrainz_album_id TEXT,
+  musicbrainz_original_album_id TEXT,
+  musicbrainz_recording_id TEXT,
+  musicbrainz_track_id TEXT,
+  musicbrainz_disc_id TEXT,
+  musicbrainz_release_group_id TEXT,
+  musicbrainz_work_id TEXT
 
 );
 
@@ -377,15 +457,31 @@ CREATE TABLE IF NOT EXISTS qobuz_artists_songs (
   compilation_off INTEGER NOT NULL DEFAULT 0,
   compilation_effective INTEGER NOT NULL DEFAULT 0,
 
+  art_embedded INTEGER DEFAULT 0,
   art_automatic TEXT,
   art_manual TEXT,
+  art_unset INTEGER DEFAULT 0,
 
   effective_albumartist TEXT,
   effective_originalyear INTEGER NOT NULL DEFAULT 0,
 
   cue_path TEXT,
 
-  rating INTEGER DEFAULT -1
+  rating INTEGER DEFAULT -1,
+
+  acoustid_id TEXT,
+  acoustid_fingerprint TEXT,
+
+  musicbrainz_album_artist_id TEXT,
+  musicbrainz_artist_id TEXT,
+  musicbrainz_original_artist_id TEXT,
+  musicbrainz_album_id TEXT,
+  musicbrainz_original_album_id TEXT,
+  musicbrainz_recording_id TEXT,
+  musicbrainz_track_id TEXT,
+  musicbrainz_disc_id TEXT,
+  musicbrainz_release_group_id TEXT,
+  musicbrainz_work_id TEXT
 
 );
 
@@ -439,15 +535,31 @@ CREATE TABLE IF NOT EXISTS qobuz_albums_songs (
   compilation_off INTEGER NOT NULL DEFAULT 0,
   compilation_effective INTEGER NOT NULL DEFAULT 0,
 
+  art_embedded INTEGER DEFAULT 0,
   art_automatic TEXT,
   art_manual TEXT,
+  art_unset INTEGER DEFAULT 0,
 
   effective_albumartist TEXT,
   effective_originalyear INTEGER NOT NULL DEFAULT 0,
 
   cue_path TEXT,
 
-  rating INTEGER DEFAULT -1
+  rating INTEGER DEFAULT -1,
+
+  acoustid_id TEXT,
+  acoustid_fingerprint TEXT,
+
+  musicbrainz_album_artist_id TEXT,
+  musicbrainz_artist_id TEXT,
+  musicbrainz_original_artist_id TEXT,
+  musicbrainz_album_id TEXT,
+  musicbrainz_original_album_id TEXT,
+  musicbrainz_recording_id TEXT,
+  musicbrainz_track_id TEXT,
+  musicbrainz_disc_id TEXT,
+  musicbrainz_release_group_id TEXT,
+  musicbrainz_work_id TEXT
 
 );
 
@@ -501,15 +613,31 @@ CREATE TABLE IF NOT EXISTS qobuz_songs (
   compilation_off INTEGER NOT NULL DEFAULT 0,
   compilation_effective INTEGER NOT NULL DEFAULT 0,
 
+  art_embedded INTEGER DEFAULT 0,
   art_automatic TEXT,
   art_manual TEXT,
+  art_unset INTEGER DEFAULT 0,
 
   effective_albumartist TEXT,
   effective_originalyear INTEGER NOT NULL DEFAULT 0,
 
   cue_path TEXT,
 
-  rating INTEGER DEFAULT -1
+  rating INTEGER DEFAULT -1,
+
+  acoustid_id TEXT,
+  acoustid_fingerprint TEXT,
+
+  musicbrainz_album_artist_id TEXT,
+  musicbrainz_artist_id TEXT,
+  musicbrainz_original_artist_id TEXT,
+  musicbrainz_album_id TEXT,
+  musicbrainz_original_album_id TEXT,
+  musicbrainz_recording_id TEXT,
+  musicbrainz_track_id TEXT,
+  musicbrainz_disc_id TEXT,
+  musicbrainz_release_group_id TEXT,
+  musicbrainz_work_id TEXT
 
 );
 
@@ -583,15 +711,31 @@ CREATE TABLE IF NOT EXISTS playlist_items (
   compilation_off INTEGER DEFAULT 0,
   compilation_effective INTEGER DEFAULT 0,
 
+  art_embedded INTEGER DEFAULT 0,
   art_automatic TEXT,
   art_manual TEXT,
+  art_unset INTEGER DEFAULT 0,
 
   effective_albumartist TEXT,
   effective_originalyear INTEGER,
 
   cue_path TEXT,
 
-  rating INTEGER DEFAULT -1
+  rating INTEGER DEFAULT -1,
+
+  acoustid_id TEXT,
+  acoustid_fingerprint TEXT,
+
+  musicbrainz_album_artist_id TEXT,
+  musicbrainz_artist_id TEXT,
+  musicbrainz_original_artist_id TEXT,
+  musicbrainz_album_id TEXT,
+  musicbrainz_original_album_id TEXT,
+  musicbrainz_recording_id TEXT,
+  musicbrainz_track_id TEXT,
+  musicbrainz_disc_id TEXT,
+  musicbrainz_release_group_id TEXT,
+  musicbrainz_work_id TEXT
 
 );
 

@@ -37,9 +37,7 @@
 #include <QString>
 #include <QStringList>
 #include <QAtomicInt>
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
-#  include <QRandomGenerator>
-#endif
+#include <QRandomGenerator>
 
 #include "core/logging.h"
 
@@ -165,10 +163,10 @@ class WorkerPool : public _WorkerPoolBase {
 template<typename HandlerType>
 WorkerPool<HandlerType>::WorkerPool(QObject *parent)
     : _WorkerPoolBase(parent),
+      worker_count_(1),
       next_worker_(0),
       next_id_(0) {
 
-  worker_count_ = qBound(1, QThread::idealThreadCount() / 2, 4);
   local_server_name_ = qApp->applicationName().toLower();
 
   if (local_server_name_.isEmpty()) {
@@ -228,7 +226,7 @@ void WorkerPool<HandlerType>::SetExecutableName(const QString &executable_name) 
 
 template<typename HandlerType>
 void WorkerPool<HandlerType>::Start() {
-  QMetaObject::invokeMethod(this, "DoStart");
+  QMetaObject::invokeMethod(this, &WorkerPool<HandlerType>::DoStart);
 }
 
 template<typename HandlerType>
@@ -294,11 +292,7 @@ void WorkerPool<HandlerType>::StartOneWorker(Worker *worker) {
 
   // Create a server, find an unused name and start listening
   forever {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
     const quint32 unique_number = QRandomGenerator::global()->bounded(static_cast<quint32>(quint64(this) & 0xFFFFFFFF));
-#else
-    const quint32 unique_number = qrand() ^ (static_cast<quint32>(quint64(this) & 0xFFFFFFFF));
-#endif
     const QString name = QString("%1_%2").arg(local_server_name_).arg(unique_number);
 
     if (worker->local_server_->listen(name)) {
@@ -423,7 +417,7 @@ WorkerPool<HandlerType>::SendMessageWithReply(MessageType *message) {
   }
 
   // Wake up the main thread
-  QMetaObject::invokeMethod(this, "SendQueuedMessages", Qt::QueuedConnection);
+  QMetaObject::invokeMethod(this, &WorkerPool<HandlerType>::SendQueuedMessages, Qt::QueuedConnection);
 
   return reply;
 

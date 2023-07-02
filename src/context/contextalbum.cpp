@@ -54,16 +54,14 @@ ContextAlbum::ContextAlbum(QWidget *parent)
       timeline_fade_(new QTimeLine(kFadeTimeLineMs, this)),
       image_strawberry_(":/pictures/strawberry.png"),
       image_original_(image_strawberry_),
-      pixmap_current_opacity_(1.0) {
+      pixmap_current_opacity_(1.0),
+      desired_height_(width()) {
 
   setObjectName("context-widget-album");
 
   setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-  cover_loader_options_.desired_height_ = width();
-  cover_loader_options_.pad_output_image_ = true;
-  cover_loader_options_.scale_output_image_ = true;
-  QImage image = ImageUtils::ScaleAndPad(image_strawberry_, cover_loader_options_.scale_output_image_, cover_loader_options_.pad_output_image_, cover_loader_options_.desired_height_);
+  QImage image = ImageUtils::ScaleImage(image_strawberry_, QSize(desired_height_, desired_height_), devicePixelRatioF(), true);
   if (!image.isNull()) {
     pixmap_current_ = QPixmap::fromImage(image);
   }
@@ -91,7 +89,7 @@ void ContextAlbum::Init(ContextView *context_view, AlbumCoverChoiceController *a
 
 QSize ContextAlbum::sizeHint() const {
 
-  return QSize(pixmap_current_.width(), pixmap_current_.height());
+  return QSize(static_cast<int>(pixmap_current_.width() / devicePixelRatioF()), static_cast<int>(pixmap_current_.height() / devicePixelRatioF()));
 
 }
 
@@ -128,8 +126,8 @@ void ContextAlbum::contextMenuEvent(QContextMenuEvent *e) {
 
 void ContextAlbum::UpdateWidth(const int new_width) {
 
-  if (new_width != cover_loader_options_.desired_height_) {
-    cover_loader_options_.desired_height_ = new_width;
+  if (new_width != desired_height_) {
+    desired_height_ = new_width;
     ScaleCover();
     ScalePreviousCovers();
     updateGeometry();
@@ -182,7 +180,7 @@ void ContextAlbum::DrawImage(QPainter *p, const QPixmap &pixmap, const qreal opa
   if (qFuzzyCompare(opacity, static_cast<qreal>(0.0))) return;
 
   p->setOpacity(opacity);
-  p->drawPixmap(0, 0, pixmap.width(), pixmap.height(), pixmap);
+  p->drawPixmap(0, 0, static_cast<int>(pixmap.width() / pixmap.devicePixelRatioF()), static_cast<int>(pixmap.height() / pixmap.devicePixelRatioF()), pixmap);
 
 }
 
@@ -235,7 +233,7 @@ void ContextAlbum::FadePreviousCoverFinished(std::shared_ptr<PreviousCover> prev
 
 void ContextAlbum::ScaleCover() {
 
-  QImage image = ImageUtils::ScaleAndPad(image_original_, cover_loader_options_.scale_output_image_, cover_loader_options_.pad_output_image_, cover_loader_options_.desired_height_);
+  const QImage image = ImageUtils::ScaleImage(image_original_, QSize(desired_height_, desired_height_), devicePixelRatioF(), true);
   if (image.isNull()) {
     pixmap_current_ = QPixmap();
   }
@@ -248,7 +246,7 @@ void ContextAlbum::ScaleCover() {
 void ContextAlbum::ScalePreviousCovers() {
 
   for (std::shared_ptr<PreviousCover> previous_cover : previous_covers_) {
-    QImage image = ImageUtils::ScaleAndPad(previous_cover->image, cover_loader_options_.scale_output_image_, cover_loader_options_.pad_output_image_, cover_loader_options_.desired_height_);
+    QImage image = ImageUtils::ScaleImage(previous_cover->image, QSize(desired_height_, desired_height_), devicePixelRatioF(), true);
     if (image.isNull()) {
       previous_cover->pixmap = QPixmap();
     }

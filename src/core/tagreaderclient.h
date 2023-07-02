@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2011, David Sansome <me@davidsansome.com>
- * Copyright 2019-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2019-2023, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,22 +53,41 @@ class TagReaderClient : public QObject {
   void Start();
   void ExitAsync();
 
-  ReplyType *ReadFile(const QString &filename);
-  ReplyType *SaveFile(const QString &filename, const Song &metadata);
+  enum class SaveType {
+    NoType = 0,
+    Tags = 1,
+    PlayCount = 2,
+    Rating = 4,
+    Cover = 8
+  };
+  Q_DECLARE_FLAGS(SaveTypes, SaveType)
+
+  class SaveCoverOptions {
+   public:
+    explicit SaveCoverOptions(const QString &_cover_filename = QString(), const QByteArray &_cover_data = QByteArray(), const QString &_mime_type = QString()) : cover_filename(_cover_filename), cover_data(_cover_data), mime_type(_mime_type) {}
+    explicit SaveCoverOptions(const QString &_cover_filename, const QString &_mime_type = QString()) : cover_filename(_cover_filename), mime_type(_mime_type) {}
+    explicit SaveCoverOptions(const QByteArray &_cover_data, const QString &_mime_type = QString()) : cover_data(_cover_data), mime_type(_mime_type) {}
+    QString cover_filename;
+    QByteArray cover_data;
+    QString mime_type;
+  };
+
   ReplyType *IsMediaFile(const QString &filename);
+  ReplyType *ReadFile(const QString &filename);
+  ReplyType *SaveFile(const QString &filename, const Song &metadata, const SaveTypes types = SaveType::Tags, const SaveCoverOptions &save_cover_options = SaveCoverOptions());
   ReplyType *LoadEmbeddedArt(const QString &filename);
-  ReplyType *SaveEmbeddedArt(const QString &filename, const QByteArray &data);
+  ReplyType *SaveEmbeddedArt(const QString &filename, const SaveCoverOptions &save_cover_options);
   ReplyType *UpdateSongPlaycount(const Song &metadata);
   ReplyType *UpdateSongRating(const Song &metadata);
 
   // Convenience functions that call the above functions and wait for a response.
   // These block the calling thread with a semaphore, and must NOT be called from the TagReaderClient's thread.
   void ReadFileBlocking(const QString &filename, Song *song);
-  bool SaveFileBlocking(const QString &filename, const Song &metadata);
+  bool SaveFileBlocking(const QString &filename, const Song &metadata,  const SaveTypes types = SaveType::Tags, const SaveCoverOptions &save_cover_options = SaveCoverOptions());
   bool IsMediaFileBlocking(const QString &filename);
   QByteArray LoadEmbeddedArtBlocking(const QString &filename);
   QImage LoadEmbeddedArtAsImageBlocking(const QString &filename);
-  bool SaveEmbeddedArtBlocking(const QString &filename, const QByteArray &data);
+  bool SaveEmbeddedArtBlocking(const QString &filename, const SaveCoverOptions &save_cover_options);
   bool UpdateSongPlaycountBlocking(const Song &metadata);
   bool UpdateSongRatingBlocking(const Song &metadata);
 

@@ -135,14 +135,14 @@ class QobuzService : public InternetService {
   void ArtistsUpdateProgressReceived(const int id, const int progress);
   void AlbumsUpdateProgressReceived(const int id, const int progress);
   void SongsUpdateProgressReceived(const int id, const int progress);
-  void HandleStreamURLFailure(const uint id, const QUrl &original_url, const QString &error);
-  void HandleStreamURLSuccess(const uint id, const QUrl &original_url, const QUrl &stream_url, const Song::FileType filetype, const int samplerate, const int bit_depth, const qint64 duration);
+  void HandleStreamURLFailure(const uint id, const QUrl &media_url, const QString &error);
+  void HandleStreamURLSuccess(const uint id, const QUrl &media_url, const QUrl &stream_url, const Song::FileType filetype, const int samplerate, const int bit_depth, const qint64 duration);
 
  private:
   using Param = QPair<QString, QString>;
   using ParamList = QList<Param>;
 
-  QString DecodeAppSecret(const QString &app_secret_encoded);
+  QString DecodeAppSecret(const QString &app_secret_encoded) const;
   void SendSearch();
   void LoginError(const QString &error = QString(), const QVariant &debug = QVariant());
 

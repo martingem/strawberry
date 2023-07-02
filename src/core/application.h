@@ -41,6 +41,7 @@ class TagReaderClient;
 class Database;
 class DeviceFinders;
 class Player;
+class NetworkAccessManager;
 class SCollection;
 class CollectionBackend;
 class CollectionModel;
@@ -74,6 +75,7 @@ class Application : public QObject {
   Database *database() const;
   TaskManager *task_manager() const;
   Player *player() const;
+  NetworkAccessManager *network() const;
   DeviceFinders *device_finders() const;
 #ifndef Q_OS_WIN
   DeviceManager *device_manager() const;
@@ -118,9 +120,9 @@ class Application : public QObject {
   void OpenSettingsDialogAtPage(SettingsDialog::Page page);
 
  signals:
-  void ErrorAdded(QString message);
+  void ErrorAdded(const QString &message);
   void SettingsChanged();
-  void SettingsDialogRequested(SettingsDialog::Page page);
+  void SettingsDialogRequested(const SettingsDialog::Page page);
   void ExitFinished();
   void ClearPixmapDiskCache();
 

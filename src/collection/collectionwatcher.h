@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
- * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2023, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,7 +59,6 @@ class CollectionWatcher : public QObject {
 
   void IncrementalScanAsync();
   void FullScanAsync();
-  void RescanTracksAsync(const SongList &songs);
   void SetRescanPausedAsync(const bool pause);
   void ReloadSettingsAsync();
 
@@ -68,19 +67,21 @@ class CollectionWatcher : public QObject {
 
   void ExitAsync();
 
+  void RescanSongsAsync(const SongList &songs);
+
  signals:
-  void NewOrUpdatedSongs(SongList);
-  void SongsMTimeUpdated(SongList);
-  void SongsDeleted(SongList);
-  void SongsUnavailable(SongList songs, bool unavailable = true);
-  void SongsReadded(SongList songs, bool unavailable = false);
-  void SubdirsDiscovered(CollectionSubdirectoryList subdirs);
-  void SubdirsMTimeUpdated(CollectionSubdirectoryList subdirs);
+  void NewOrUpdatedSongs(const SongList &songs);
+  void SongsMTimeUpdated(const SongList &songs);
+  void SongsDeleted(const SongList &songs);
+  void SongsUnavailable(const SongList &songs, const bool unavailable = true);
+  void SongsReadded(const SongList &songs, const bool unavailable = false);
+  void SubdirsDiscovered(const CollectionSubdirectoryList &subdirs);
+  void SubdirsMTimeUpdated(const CollectionSubdirectoryList &subdirs);
   void CompilationsNeedUpdating();
-  void UpdateLastSeen(int directory_id, int expire_unavailable_songs_days);
+  void UpdateLastSeen(const int directory_id, const int expire_unavailable_songs_days);
   void ExitFinished();
 
-  void ScanStarted(int task_id);
+  void ScanStarted(const int task_id);
 
  public slots:
   void AddDirectory(const CollectionDirectory &dir, const CollectionSubdirectoryList &subdirs);
@@ -166,9 +167,9 @@ class CollectionWatcher : public QObject {
   void IncrementalScanCheck();
   void IncrementalScanNow();
   void FullScanNow();
-  void RescanTracksNow();
   void RescanPathsNow();
   void ScanSubdirectory(const QString &path, const CollectionSubdirectory &subdir, const quint64 files_count, CollectionWatcher::ScanTransaction *t, const bool force_noincremental = false);
+  void RescanSongs(const SongList &songs);
 
  private:
   static bool FindSongsByPath(const SongList &songs, const QString &path, SongList *out);
@@ -177,17 +178,17 @@ class CollectionWatcher : public QObject {
   inline static QString NoExtensionPart(const QString &fileName);
   inline static QString ExtensionPart(const QString &fileName);
   inline static QString DirectoryPart(const QString &fileName);
-  QString PickBestImage(const QStringList &images);
-  QUrl ImageForSong(const QString &path, QMap<QString, QStringList> &album_art);
+  QString PickBestArt(const QStringList &art_automatic_list);
+  QUrl ArtForSong(const QString &path, QMap<QString, QStringList> &art_automatic_list);
   void AddWatch(const CollectionDirectory &dir, const QString &path);
   void RemoveWatch(const CollectionDirectory &dir, const CollectionSubdirectory &subdir);
   static quint64 GetMtimeForCue(const QString &cue_path);
   void PerformScan(const bool incremental, const bool ignore_mtimes);
 
   // Updates the sections of a cue associated and altered (according to mtime) media file during a scan.
-  void UpdateCueAssociatedSongs(const QString &file, const QString &path, const QString &fingerprint, const QString &matching_cue, const QUrl &image, const SongList &old_cue_songs, ScanTransaction *t);
+  void UpdateCueAssociatedSongs(const QString &file, const QString &path, const QString &fingerprint, const QString &matching_cue, const QUrl &art_automatic, const SongList &old_cue_songs, ScanTransaction *t);
   // Updates a single non-cue associated and altered (according to mtime) song during a scan.
-  void UpdateNonCueAssociatedSong(const QString &file, const QString &fingerprint, const SongList &matching_songs, const QUrl &image, const bool cue_deleted, ScanTransaction *t);
+  void UpdateNonCueAssociatedSong(const QString &file, const QString &fingerprint, const SongList &matching_songs, const QUrl &art_automatic, const bool cue_deleted, ScanTransaction *t);
   // Scans a single media file that's present on the disk but not yet in the collection.
   // It may result in a multiple files added to the collection when the media file has many sections (like a CUE related media file).
   SongList ScanNewFile(const QString &file, const QString &path, const QString &fingerprint, const QString &matching_cue, QSet<QString> *cues_processed);
@@ -209,9 +210,9 @@ class CollectionWatcher : public QObject {
   QThread *original_thread_;
   QHash<QString, CollectionDirectory> subdir_mapping_;
 
-  // A list of words use to try to identify the (likely) best image found in an directory to use as cover artwork.
+  // A list of words use to try to identify the (likely) best album cover art found in an directory to use as cover artwork.
   // e.g. using ["front", "cover"] would identify front.jpg and exclude back.jpg.
-  QStringList best_image_filters_;
+  QStringList best_art_filters_;
 
   bool scan_on_startup_;
   bool monitor_;
@@ -223,7 +224,6 @@ class CollectionWatcher : public QObject {
 
   bool stop_requested_;
   bool abort_requested_;
-  bool rescan_in_progress_;  // True if RescanTracksNow() has been called and is working.
 
   QMap<int, CollectionDirectory> watched_dirs_;
   QTimer *rescan_timer_;
@@ -236,8 +236,6 @@ class CollectionWatcher : public QObject {
   CueParser *cue_parser_;
 
   static QStringList sValidImages;
-
-  SongList song_rescan_queue_;  // Set by UI thread
 
   qint64 last_scan_time_;
 

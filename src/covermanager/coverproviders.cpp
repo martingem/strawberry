@@ -30,7 +30,6 @@
 #include <QSettings>
 
 #include "core/logging.h"
-#include "core/networkaccessmanager.h"
 #include "coverprovider.h"
 #include "coverproviders.h"
 
@@ -38,7 +37,7 @@
 
 int CoverProviders::NextOrderId = 0;
 
-CoverProviders::CoverProviders(QObject *parent) : QObject(parent), network_(new NetworkAccessManager(this)) {}
+CoverProviders::CoverProviders(QObject *parent) : QObject(parent) {}
 
 CoverProviders::~CoverProviders() {
 
@@ -59,7 +58,7 @@ void CoverProviders::ReloadSettings() {
 
   QSettings s;
   s.beginGroup(CoversSettingsPage::kSettingsGroup);
-  QStringList providers_enabled = s.value("providers", QStringList() << all_providers.values()).toStringList();
+  QStringList providers_enabled = s.value(CoversSettingsPage::kProviders, QStringList() << all_providers.values()).toStringList();
   s.endGroup();
 
   int i = 0;

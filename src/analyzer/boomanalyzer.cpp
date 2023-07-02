@@ -32,12 +32,9 @@
 #include <QPalette>
 #include <QColor>
 
-#include "engine/engine_fwd.h"
 #include "engine/enginebase.h"
 #include "fht.h"
 #include "analyzerbase.h"
-
-using Analyzer::Scope;
 
 const int BoomAnalyzer::kColumnWidth = 4;
 const int BoomAnalyzer::kMaxBandCount = 256;
@@ -46,7 +43,7 @@ const int BoomAnalyzer::kMinBandCount = 32;
 const char *BoomAnalyzer::kName = QT_TRANSLATE_NOOP("AnalyzerContainer", "Boom analyzer");
 
 BoomAnalyzer::BoomAnalyzer(QWidget *parent)
-    : Analyzer::Base(parent, 9),
+    : AnalyzerBase(parent, 9),
       bands_(0),
       scope_(kMinBandCount),
       fg_(palette().color(QPalette::Highlight)),
@@ -110,7 +107,7 @@ void BoomAnalyzer::transform(Scope &s) {
 
 void BoomAnalyzer::analyze(QPainter &p, const Scope &scope, const bool new_frame) {
 
-  if (!new_frame || engine_->state() == Engine::State::Paused) {
+  if (!new_frame || engine_->state() == EngineBase::State::Paused) {
     p.drawPixmap(0, 0, canvas_);
     return;
   }
@@ -120,7 +117,7 @@ void BoomAnalyzer::analyze(QPainter &p, const Scope &scope, const bool new_frame
   QPainter canvas_painter(&canvas_);
   canvas_.fill(palette().color(QPalette::Window));
 
-  Analyzer::interpolate(scope, scope_);
+  interpolate(scope, scope_);
 
   for (int i = 0, x = 0, y = 0; i < bands_; ++i, x += kColumnWidth + 1) {
     h = log10(scope_[i] * 256.0) * F_;

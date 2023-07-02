@@ -27,7 +27,6 @@
 #include <QWidget>
 #include <QDialog>
 #include <QScreen>
-#include <QWindow>
 #include <QMainWindow>
 #include <QAbstractItemModel>
 #include <QtAlgorithms>
@@ -58,6 +57,7 @@
 
 #include "core/iconloader.h"
 #include "core/mainwindow.h"
+#include "utilities/screenutils.h"
 #include "widgets/fileview.h"
 #include "transcodedialog.h"
 #include "transcoder.h"
@@ -194,17 +194,7 @@ void TranscodeDialog::LoadGeometry() {
   s.endGroup();
 
   // Center the window on the same screen as the mainwindow.
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
-  QScreen *screen = mainwindow_->screen();
-#else
-  QScreen *screen = (mainwindow_->window() && mainwindow_->window()->windowHandle() ? mainwindow_->window()->windowHandle()->screen() : nullptr);
-#endif
-  if (screen) {
-    const QRect sr = screen->availableGeometry();
-    const QRect wr({}, size().boundedTo(sr.size()));
-    resize(wr.size());
-    move(sr.center() - wr.center());
-  }
+  Utilities::CenterWidgetOnScreen(Utilities::GetScreen(mainwindow_), this);
 
 }
 
@@ -242,9 +232,11 @@ void TranscodeDialog::Start() {
 
   // Add jobs to the transcoder
   for (int i = 0; i < file_model->rowCount(); ++i) {
-    QString filename = file_model->index(i, 0).data(Qt::UserRole).toString();
-    QString outfilename = GetOutputFileName(filename, preset);
-    transcoder_->AddJob(filename, preset, outfilename);
+    const QString input_filepath = file_model->index(i, 0).data(Qt::UserRole).toString();
+    if (input_filepath.isEmpty()) continue;
+    const QString output_filepath = GetOutputFileName(input_filepath, preset);
+    if (output_filepath.isEmpty()) continue;
+    transcoder_->AddJob(input_filepath, preset, output_filepath);
   }
 
   // Set up the progressbar
@@ -449,17 +441,31 @@ QString TranscodeDialog::TrimPath(const QString &path) {
   return path.section('/', -1, -1, QString::SectionSkipEmpty);
 }
 
-QString TranscodeDialog::GetOutputFileName(const QString &input, const TranscoderPreset &preset) const {
+QString TranscodeDialog::GetOutputFileName(const QString &input_filepath, const TranscoderPreset &preset) const {
 
-  QString path = ui_->destination->itemData(ui_->destination->currentIndex()).toString();
-  if (path.isEmpty()) {
+  QString destination_path = ui_->destination->itemData(ui_->destination->currentIndex()).toString();
+  QString output_filepath;
+  if (destination_path.isEmpty()) {
     // Keep the original path.
-    return input.section('.', 0, -2) + '.' + preset.extension_;
+    output_filepath = input_filepath.section('.', 0, -2) + '.' + preset.extension_;
   }
   else {
-    QString file_name = TrimPath(input);
-    file_name = file_name.section('.', 0, -2);
-    return path + '/' + file_name + '.' + preset.extension_;
+    QString filename = TrimPath(input_filepath);
+    filename = filename.section('.', 0, -2);
+    output_filepath = destination_path + '/' + filename + '.' + preset.extension_;
   }
+
+  if (output_filepath.isEmpty()) return QString();
+
+  if (QFileInfo::exists(output_filepath)) {
+    QFileInfo fileinfo(output_filepath);
+    const QString original_filename = fileinfo.completeBaseName();
+    for (int i = 1; fileinfo.exists(); ++i) {
+      fileinfo.setFile(QString("%1/%2-%3.%4").arg(fileinfo.path(), original_filename).arg(i).arg(fileinfo.suffix()));
+    }
+    output_filepath = fileinfo.filePath();
+  }
+
+  return output_filepath;
 
 }

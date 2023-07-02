@@ -162,9 +162,9 @@ void Mpris2::PlaylistManagerInitialized() {
   QObject::connect(app_->playlist_manager()->sequence(), &PlaylistSequence::RepeatModeChanged, this, &Mpris2::RepeatModeChanged);
 }
 
-void Mpris2::EngineStateChanged(Engine::State newState) {
+void Mpris2::EngineStateChanged(EngineBase::State newState) {
 
-  if (newState != Engine::State::Playing && newState != Engine::State::Paused) {
+  if (newState != EngineBase::State::Playing && newState != EngineBase::State::Paused) {
     last_metadata_ = QVariantMap();
     EmitNotification("Metadata");
   }
@@ -172,7 +172,7 @@ void Mpris2::EngineStateChanged(Engine::State newState) {
   EmitNotification("CanPlay");
   EmitNotification("CanPause");
   EmitNotification("PlaybackStatus", PlaybackStatus(newState));
-  if (newState == Engine::State::Playing) EmitNotification("CanSeek", CanSeek(newState));
+  if (newState == EngineBase::State::Playing) EmitNotification("CanSeek", CanSeek(newState));
 
 }
 
@@ -304,11 +304,11 @@ QString Mpris2::PlaybackStatus() const {
   return PlaybackStatus(app_->player()->GetState());
 }
 
-QString Mpris2::PlaybackStatus(Engine::State state) const {
+QString Mpris2::PlaybackStatus(EngineBase::State state) const {
 
   switch (state) {
-    case Engine::State::Playing: return "Playing";
-    case Engine::State::Paused: return "Paused";
+    case EngineBase::State::Playing: return "Playing";
+    case EngineBase::State::Paused: return "Paused";
     default: return "Stopped";
   }
 
@@ -401,14 +401,16 @@ void Mpris2::AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResult &re
   else if (result.temp_cover_url.isValid() && result.temp_cover_url.isLocalFile()) {
     cover_url = result.temp_cover_url;
   }
-  else if (song.art_manual().isValid() && song.art_manual().isLocalFile() && song.art_manual().path() != Song::kManuallyUnsetCover && song.art_manual().path() != Song::kEmbeddedCover) {
+  else if (song.art_manual().isValid() && song.art_manual().isLocalFile()) {
     cover_url = song.art_manual();
   }
-  else if (song.art_automatic().isValid() && song.art_automatic().isLocalFile() && song.art_automatic().path() != Song::kManuallyUnsetCover && song.art_automatic().path() != Song::kEmbeddedCover) {
+  else if (song.art_automatic().isValid() && song.art_automatic().isLocalFile()) {
     cover_url = song.art_automatic();
   }
 
-  if (cover_url.isValid()) AddMetadata("mpris:artUrl", cover_url.toString(), &last_metadata_);
+  if (cover_url.isValid()) {
+    AddMetadata("mpris:artUrl", cover_url.toString(), &last_metadata_);
+  }
 
   AddMetadata("year", song.year(), &last_metadata_);
   AddMetadata("bitrate", song.bitrate(), &last_metadata_);
@@ -447,13 +449,13 @@ bool Mpris2::CanPlay() const {
 
 // This one's a bit different than MPRIS 1 - we want this to be true even when the song is already paused or stopped.
 bool Mpris2::CanPause() const {
-  return (app_->player()->GetCurrentItem() && app_->player()->GetState() == Engine::State::Playing && !(app_->player()->GetCurrentItem()->options() & PlaylistItem::Option::PauseDisabled)) || PlaybackStatus() == "Paused" || PlaybackStatus() == "Stopped";
+  return (app_->player()->GetCurrentItem() && app_->player()->GetState() == EngineBase::State::Playing && !(app_->player()->GetCurrentItem()->options() & PlaylistItem::Option::PauseDisabled)) || PlaybackStatus() == "Paused" || PlaybackStatus() == "Stopped";
 }
 
 bool Mpris2::CanSeek() const { return CanSeek(app_->player()->GetState()); }
 
-bool Mpris2::CanSeek(Engine::State state) const {
-  return app_->player()->GetCurrentItem() && state != Engine::State::Empty && !app_->player()->GetCurrentItem()->Metadata().is_stream();
+bool Mpris2::CanSeek(EngineBase::State state) const {
+  return app_->player()->GetCurrentItem() && state != EngineBase::State::Empty && !app_->player()->GetCurrentItem()->Metadata().is_stream();
 }
 
 bool Mpris2::CanControl() const { return true; }
@@ -471,7 +473,7 @@ void Mpris2::Previous() {
 }
 
 void Mpris2::Pause() {
-  if (CanPause() && app_->player()->GetState() != Engine::State::Paused) {
+  if (CanPause() && app_->player()->GetState() != EngineBase::State::Paused) {
     app_->player()->Pause();
   }
 }

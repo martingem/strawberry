@@ -55,11 +55,11 @@
 #include "gstenginepipeline.h"
 #include "gstbufferconsumer.h"
 
-const int GstEnginePipeline::kGstStateTimeoutNanosecs = 10000000;
-const int GstEnginePipeline::kFaderFudgeMsec = 2000;
+constexpr int GstEnginePipeline::kGstStateTimeoutNanosecs = 10000000;
+constexpr int GstEnginePipeline::kFaderFudgeMsec = 2000;
 
-const int GstEnginePipeline::kEqBandCount = 10;
-const int GstEnginePipeline::kEqBandFrequencies[] = { 60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000 };
+constexpr int GstEnginePipeline::kEqBandCount = 10;
+constexpr int GstEnginePipeline::kEqBandFrequencies[] = { 60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000 };
 
 int GstEnginePipeline::sId = 1;
 
@@ -86,6 +86,7 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       channels_enabled_(false),
       channels_(0),
       bs2b_enabled_(false),
+      strict_ssl_enabled_(false),
       segment_start_(0),
       segment_start_received_(false),
       end_offset_nanosec_(-1),
@@ -98,6 +99,7 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       pending_seek_nanosec_(-1),
       last_known_position_ns_(0),
       next_uri_set_(false),
+      volume_set_(false),
       volume_internal_(-1.0),
       volume_percent_(100),
       use_fudge_timer_(false),
@@ -121,7 +123,8 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       notify_source_cb_id_(-1),
       about_to_finish_cb_id_(-1),
       notify_volume_cb_id_(-1),
-      logged_unsupported_analyzer_format_(false) {
+      logged_unsupported_analyzer_format_(false),
+      about_to_finish_(false) {
 
   eq_band_gains_.reserve(kEqBandCount);
   for (int i = 0; i < kEqBandCount; ++i) eq_band_gains_ << 0;
@@ -262,6 +265,10 @@ void GstEnginePipeline::set_bs2b_enabled(const bool enabled) {
   bs2b_enabled_ = enabled;
 }
 
+void GstEnginePipeline::set_strict_ssl_enabled(const bool enabled) {
+  strict_ssl_enabled_ = enabled;
+}
+
 void GstEnginePipeline::set_fading_enabled(const bool enabled) {
   fading_enabled_ = enabled;
 }
@@ -282,15 +289,16 @@ GstElement *GstEnginePipeline::CreateElement(const QString &factory_name, const 
 
 }
 
-bool GstEnginePipeline::InitFromUrl(const QByteArray &stream_url, const QUrl &original_url, const qint64 end_nanosec, QString &error) {
+bool GstEnginePipeline::InitFromUrl(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 end_nanosec, QString &error) {
 
+  media_url_ = media_url;
   stream_url_ = stream_url;
-  original_url_ = original_url;
+  gst_url_ = gst_url;
   end_offset_nanosec_ = end_nanosec;
 
   guint version_major = 0, version_minor = 0, version_micro = 0, version_nano = 0;
   gst_plugins_base_version(&version_major, &version_minor, &version_micro, &version_nano);
-  if (QVersionNumber::compare(QVersionNumber(version_major, version_minor, version_micro), QVersionNumber(1, 22, 0)) >= 0) {
+  if (QVersionNumber::compare(QVersionNumber(static_cast<int>(version_major), static_cast<int>(version_minor), static_cast<int>(version_micro)), QVersionNumber(1, 22, 0)) >= 0) {
     pipeline_ = CreateElement("playbin3", "pipeline", nullptr, error);
   }
   else {
@@ -300,7 +308,7 @@ bool GstEnginePipeline::InitFromUrl(const QByteArray &stream_url, const QUrl &or
   if (!pipeline_) return false;
 
   pad_added_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "pad-added", &PadAddedCallback, this);
-  notify_source_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "notify::source", &NotifySourceCallback, this);
+  notify_source_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "source-setup", &SourceSetupCallback, this);
   about_to_finish_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "about-to-finish", &AboutToFinishCallback, this);
 
   if (!InitAudioBin(error)) return false;
@@ -325,7 +333,7 @@ bool GstEnginePipeline::InitFromUrl(const QByteArray &stream_url, const QUrl &or
   flags &= ~0x00000010;
   g_object_set(G_OBJECT(pipeline_), "flags", flags, nullptr);
 
-  g_object_set(G_OBJECT(pipeline_), "uri", stream_url.constData(), nullptr);
+  g_object_set(G_OBJECT(pipeline_), "uri", gst_url.constData(), nullptr);
 
   pipeline_is_connected_ = true;
 
@@ -518,7 +526,7 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
     // As a workaround, we create two dummy bands at both ends of the spectrum.
     // This causes the actual first and last adjustable bands to be implemented using band-pass filters.
 
-    g_object_set(G_OBJECT(equalizer_), "num-bands", 10 + 2, nullptr);
+    g_object_set(G_OBJECT(equalizer_), "num-bands", kEqBandCount + 2, nullptr);
 
     // Dummy first band (bandwidth 0, cutting below 20Hz):
     GstObject *first_band = GST_OBJECT(gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(equalizer_), 0));
@@ -788,40 +796,40 @@ void GstEnginePipeline::ElementAddedCallback(GstBin *bin, GstBin*, GstElement *e
 
 }
 
-void GstEnginePipeline::NotifySourceCallback(GstPlayBin *bin, GParamSpec *param_spec, gpointer self) {
+void GstEnginePipeline::SourceSetupCallback(GstElement *playbin, GstElement *source, gpointer self) {
 
-  Q_UNUSED(param_spec)
+  Q_UNUSED(playbin)
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
-  GstElement *element = nullptr;
-  g_object_get(bin, "source", &element, nullptr);
-  if (!element) {
-    return;
-  }
-
-  if (g_object_class_find_property(G_OBJECT_GET_CLASS(element), "device") && !instance->source_device().isEmpty()) {
+  if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "device") && !instance->source_device().isEmpty()) {
     // Gstreamer is not able to handle device in URL (referring to Gstreamer documentation, this might be added in the future).
     // Despite that, for now we include device inside URL: we decompose it during Init and set device here, when this callback is called.
-    g_object_set(element, "device", instance->source_device().toLocal8Bit().constData(), nullptr);
+    qLog(Debug) << "Setting device";
+    g_object_set(source, "device", instance->source_device().toLocal8Bit().constData(), nullptr);
   }
 
-  if (g_object_class_find_property(G_OBJECT_GET_CLASS(element), "user-agent")) {
+  if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "user-agent")) {
+    qLog(Debug) << "Setting user-agent";
     QString user_agent = QString("%1 %2").arg(QCoreApplication::applicationName(), QCoreApplication::applicationVersion());
-    g_object_set(element, "user-agent", user_agent.toUtf8().constData(), nullptr);
-    g_object_set(element, "ssl-strict", FALSE, nullptr);
+    g_object_set(source, "user-agent", user_agent.toUtf8().constData(), nullptr);
   }
 
-  if (!instance->proxy_address_.isEmpty() && g_object_class_find_property(G_OBJECT_GET_CLASS(element), "proxy")) {
+  if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "ssl-strict")) {
+    qLog(Debug) << "Turning" << (instance->strict_ssl_enabled_ ? "on" : "off") << "strict SSL";
+    g_object_set(source, "ssl-strict", instance->strict_ssl_enabled_ ? TRUE : FALSE, nullptr);
+  }
+
+  if (!instance->proxy_address_.isEmpty() && g_object_class_find_property(G_OBJECT_GET_CLASS(source), "proxy")) {
     qLog(Debug) << "Setting proxy to" << instance->proxy_address_;
-    g_object_set(element, "proxy", instance->proxy_address_.toUtf8().constData(), nullptr);
+    g_object_set(source, "proxy", instance->proxy_address_.toUtf8().constData(), nullptr);
     if (instance->proxy_authentication_ &&
-        g_object_class_find_property(G_OBJECT_GET_CLASS(element), "proxy-id") &&
-        g_object_class_find_property(G_OBJECT_GET_CLASS(element), "proxy-pw") &&
+        g_object_class_find_property(G_OBJECT_GET_CLASS(source), "proxy-id") &&
+        g_object_class_find_property(G_OBJECT_GET_CLASS(source), "proxy-pw") &&
         !instance->proxy_user_.isEmpty() &&
         !instance->proxy_pass_.isEmpty())
     {
-      g_object_set(element, "proxy-id", instance->proxy_user_.toUtf8().constData(), "proxy-pw", instance->proxy_pass_.toUtf8().constData(), nullptr);
+      g_object_set(source, "proxy-id", instance->proxy_user_.toUtf8().constData(), "proxy-pw", instance->proxy_pass_.toUtf8().constData(), nullptr);
     }
   }
 
@@ -832,8 +840,6 @@ void GstEnginePipeline::NotifySourceCallback(GstPlayBin *bin, GParamSpec *param_
     instance->SetState(GST_STATE_PLAYING);
   }
 
-  g_object_unref(element);
-
 }
 
 void GstEnginePipeline::NotifyVolumeCallback(GstElement *element, GParamSpec *param_spec, gpointer self) {
@@ -842,6 +848,8 @@ void GstEnginePipeline::NotifyVolumeCallback(GstElement *element, GParamSpec *pa
   Q_UNUSED(param_spec)
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
+
+  if (!instance->volume_set_) return;
 
   g_object_get(G_OBJECT(instance->volume_), "volume", &instance->volume_internal_, nullptr);
 
@@ -1069,8 +1077,9 @@ GstPadProbeReturn GstEnginePipeline::BufferProbeCallback(GstPad *pad, GstPadProb
     if (instance->has_next_valid_url() && instance->next_stream_url_ == instance->stream_url_ && instance->next_beginning_offset_nanosec_ == instance->end_offset_nanosec_) {
       // The "next" song is actually the next segment of this file - so cheat and keep on playing, but just tell the Engine we've moved on.
       instance->end_offset_nanosec_ = instance->next_end_offset_nanosec_;
+      instance->next_media_url_.clear();
       instance->next_stream_url_.clear();
-      instance->next_original_url_.clear();
+      instance->next_gst_url_.clear();
       instance->next_beginning_offset_nanosec_ = 0;
       instance->next_end_offset_nanosec_ = 0;
 
@@ -1094,12 +1103,15 @@ void GstEnginePipeline::AboutToFinishCallback(GstPlayBin *playbin, gpointer self
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
+  qLog(Debug) << "Stream from URL" << instance->gst_url_ << "about to finish.";
+
+  instance->about_to_finish_ = true;
+
   if (instance->has_next_valid_url() && !instance->next_uri_set_) {
-    // Set the next uri. When the current song ends it will be played automatically and a STREAM_START message is send to the bus.
-    // When the next uri is not playable an error message is send when the pipeline goes to PLAY (or PAUSE) state or immediately if it is currently in PLAY state.
-    instance->next_uri_set_ = true;
-    g_object_set(G_OBJECT(instance->pipeline_), "uri", instance->next_stream_url_.constData(), nullptr);
+    instance->SetNextUrl();
   }
+
+  emit instance->AboutToFinish();
 
 }
 
@@ -1196,13 +1208,16 @@ void GstEnginePipeline::StreamStatusMessageReceived(GstMessage *msg) {
 void GstEnginePipeline::StreamStartMessageReceived() {
 
   if (next_uri_set_) {
+    qLog(Debug) << "Stream changed from URL" << gst_url_ << "to" << next_gst_url_;
     next_uri_set_ = false;
-
+    about_to_finish_ = false;
+    media_url_ = next_media_url_;
     stream_url_ = next_stream_url_;
-    original_url_ = next_original_url_;
+    gst_url_ = next_gst_url_;
     end_offset_nanosec_ = next_end_offset_nanosec_;
     next_stream_url_.clear();
-    next_original_url_.clear();
+    next_media_url_.clear();
+    next_gst_url_.clear();
     next_beginning_offset_nanosec_ = 0;
     next_end_offset_nanosec_ = 0;
 
@@ -1292,23 +1307,24 @@ void GstEnginePipeline::TagMessageReceived(GstMessage *msg) {
   GstTagList *taglist = nullptr;
   gst_message_parse_tag(msg, &taglist);
 
-  Engine::SimpleMetaBundle bundle;
-  bundle.type = Engine::SimpleMetaBundle::Type::Current;
-  bundle.url = original_url_;
-  bundle.title = ParseStrTag(taglist, GST_TAG_TITLE);
-  bundle.artist = ParseStrTag(taglist, GST_TAG_ARTIST);
-  bundle.comment = ParseStrTag(taglist, GST_TAG_COMMENT);
-  bundle.album = ParseStrTag(taglist, GST_TAG_ALBUM);
-  bundle.bitrate = static_cast<int>(ParseUIntTag(taglist, GST_TAG_BITRATE) / 1000);
-  bundle.lyrics = ParseStrTag(taglist, GST_TAG_LYRICS);
+  EngineMetadata engine_metadata;
+  engine_metadata.type = EngineMetadata::Type::Current;
+  engine_metadata.media_url = media_url_;
+  engine_metadata.stream_url = stream_url_;
+  engine_metadata.title = ParseStrTag(taglist, GST_TAG_TITLE);
+  engine_metadata.artist = ParseStrTag(taglist, GST_TAG_ARTIST);
+  engine_metadata.comment = ParseStrTag(taglist, GST_TAG_COMMENT);
+  engine_metadata.album = ParseStrTag(taglist, GST_TAG_ALBUM);
+  engine_metadata.bitrate = static_cast<int>(ParseUIntTag(taglist, GST_TAG_BITRATE) / 1000);
+  engine_metadata.lyrics = ParseStrTag(taglist, GST_TAG_LYRICS);
 
-  if (!bundle.title.isEmpty() && bundle.artist.isEmpty() && bundle.album.isEmpty()) {
+  if (!engine_metadata.title.isEmpty() && engine_metadata.artist.isEmpty() && engine_metadata.album.isEmpty()) {
     QStringList title_splitted;
-    if (bundle.title.contains(" - ")) {
-      title_splitted = bundle.title.split(" - ");
+    if (engine_metadata.title.contains(" - ")) {
+      title_splitted = engine_metadata.title.split(" - ");
     }
-    else if (bundle.title.contains('~')) {
-      title_splitted = bundle.title.split('~');
+    else if (engine_metadata.title.contains('~')) {
+      title_splitted = engine_metadata.title.split('~');
     }
     if (!title_splitted.isEmpty() && title_splitted.count() >= 2) {
       int i = 0;
@@ -1316,13 +1332,13 @@ void GstEnginePipeline::TagMessageReceived(GstMessage *msg) {
         ++i;
         switch (i) {
           case 1:
-            bundle.artist = title_part.trimmed();
+            engine_metadata.artist = title_part.trimmed();
             break;
           case 2:
-            bundle.title = title_part.trimmed();
+            engine_metadata.title = title_part.trimmed();
             break;
           case 3:
-            bundle.album = title_part.trimmed();
+            engine_metadata.album = title_part.trimmed();
             break;
           default:
             break;
@@ -1333,7 +1349,7 @@ void GstEnginePipeline::TagMessageReceived(GstMessage *msg) {
 
   gst_tag_list_unref(taglist);
 
-  emit MetadataFound(id(), bundle);
+  emit MetadataFound(id(), engine_metadata);
 
 }
 
@@ -1375,6 +1391,9 @@ void GstEnginePipeline::StateChangedMessageReceived(GstMessage *msg) {
   if (!pipeline_is_initialized_ && (new_state == GST_STATE_PAUSED || new_state == GST_STATE_PLAYING)) {
     qLog(Debug) << "Pipeline initialized: State changed from" << old_state << "to" << new_state;
     pipeline_is_initialized_ = true;
+    if (!volume_set_) {
+      SetVolume(volume_percent_);
+    }
     if (pending_seek_nanosec_ != -1 && pipeline_is_connected_) {
       QMetaObject::invokeMethod(this, "Seek", Qt::QueuedConnection, Q_ARG(qint64, pending_seek_nanosec_));
     }
@@ -1387,7 +1406,7 @@ void GstEnginePipeline::StateChangedMessageReceived(GstMessage *msg) {
     if (next_uri_set_ && new_state == GST_STATE_READY) {
       // Revert uri and go back to PLAY state again
       next_uri_set_ = false;
-      g_object_set(G_OBJECT(pipeline_), "uri", stream_url_.constData(), nullptr);
+      g_object_set(G_OBJECT(pipeline_), "uri", gst_url_.constData(), nullptr);
       SetState(GST_STATE_PLAYING);
     }
   }
@@ -1486,9 +1505,12 @@ void GstEnginePipeline::SetVolume(const uint volume_percent) {
 
   if (volume_) {
     const double volume_internal = static_cast<double>(volume_percent) * 0.01;
-    if (volume_internal != volume_internal_) {
+    if (!volume_set_ || volume_internal != volume_internal_) {
       volume_internal_ = volume_internal;
       g_object_set(G_OBJECT(volume_), "volume", volume_internal, nullptr);
+      if (pipeline_is_initialized_) {
+        volume_set_ = true;
+      }
     }
   }
 
@@ -1637,11 +1659,29 @@ void GstEnginePipeline::RemoveAllBufferConsumers() {
   buffer_consumers_.clear();
 }
 
-void GstEnginePipeline::SetNextUrl(const QByteArray &stream_url, const QUrl &original_url, const qint64 beginning_nanosec, const qint64 end_nanosec) {
+void GstEnginePipeline::PrepareNextUrl(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 beginning_nanosec, const qint64 end_nanosec) {
 
+  next_media_url_ = media_url;
   next_stream_url_ = stream_url;
-  next_original_url_ = original_url;
+  next_gst_url_ = gst_url;
   next_beginning_offset_nanosec_ = beginning_nanosec;
   next_end_offset_nanosec_ = end_nanosec;
+
+  if (about_to_finish_) {
+    SetNextUrl();
+  }
+
+}
+
+void GstEnginePipeline::SetNextUrl() {
+
+  if (about_to_finish_ && has_next_valid_url() && !next_uri_set_) {
+    // Set the next uri. When the current song ends it will be played automatically and a STREAM_START message is send to the bus.
+    // When the next uri is not playable an error message is send when the pipeline goes to PLAY (or PAUSE) state or immediately if it is currently in PLAY state.
+    next_uri_set_ = true;
+    qLog(Debug) << "Setting next URL to" << next_gst_url_;
+    g_object_set(G_OBJECT(pipeline_), "uri", next_gst_url_.constData(), nullptr);
+    about_to_finish_ = false;
+  }
 
 }

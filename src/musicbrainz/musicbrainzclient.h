@@ -50,7 +50,7 @@ class MusicBrainzClient : public QObject {
  public:
   // The second argument allows for specifying a custom network access manager.
   // It is used in tests. The ownership of network is not transferred.
-  explicit MusicBrainzClient(QObject *parent = nullptr, QNetworkAccessManager *network = nullptr);
+  explicit MusicBrainzClient(QNetworkAccessManager *network, QObject *parent = nullptr);
   ~MusicBrainzClient() override;
 
   struct Result {
@@ -101,9 +101,9 @@ class MusicBrainzClient : public QObject {
 
  signals:
   // Finished signal emitted when fechting songs tags
-  void Finished(int id, MusicBrainzClient::ResultList result, QString error = QString());
+  void Finished(const int id, const MusicBrainzClient::ResultList &result, const QString &error = QString());
   // Finished signal emitted when fechting album's songs tags using DiscId
-  void DiscIdFinished(QString artist, QString album, MusicBrainzClient::ResultList result, QString error = QString());
+  void DiscIdFinished(const QString &artist, const QString &album, const MusicBrainzClient::ResultList &result, const QString &error = QString());
 
  private slots:
   void FlushRequests();

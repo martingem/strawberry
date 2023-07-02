@@ -33,14 +33,12 @@
 #include "utilities/envutils.h"
 #include "utilities/timeconstants.h"
 #include "core/networkproxyfactory.h"
-#include "engine_fwd.h"
 #include "enginebase.h"
 #include "settings/backendsettingspage.h"
 #include "settings/networkproxysettingspage.h"
 
-Engine::Base::Base(const EngineType type, QObject *parent)
+EngineBase::EngineBase(QObject *parent)
     : QObject(parent),
-      type_(type),
       volume_control_(true),
       volume_(100),
       beginning_nanosec_(0),
@@ -70,16 +68,48 @@ Engine::Base::Base(const EngineType type, QObject *parent)
       channels_(0),
       bs2b_enabled_(false),
       http2_enabled_(true),
+      strict_ssl_enabled_(false),
       about_to_end_emitted_(false) {}
 
-Engine::Base::~Base() = default;
+EngineBase::~EngineBase() = default;
 
-bool Engine::Base::Load(const QUrl &stream_url, const QUrl &original_url, const TrackChangeFlags, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec) {
+EngineBase::Type EngineBase::TypeFromName(const QString &name) {
+
+  if (name.compare("gstreamer", Qt::CaseInsensitive) == 0) return Type::GStreamer;
+  if (name.compare("vlc", Qt::CaseInsensitive) == 0)  return Type::VLC;
+
+  return Type::None;
+
+}
+
+QString EngineBase::Name(const Type type) {
+
+  switch (type) {
+    case Type::GStreamer:  return QString("gstreamer");
+    case Type::VLC:        return QString("vlc");
+    case Type::None:
+    default:               return QString("None");
+  }
+
+}
+
+QString EngineBase::Description(const Type type) {
+
+  switch (type) {
+    case Type::GStreamer:  return QString("GStreamer");
+    case Type::VLC:        return QString("VLC");
+    case Type::None:
+    default:               return QString("None");
+  }
+
+}
+
+bool EngineBase::Load(const QUrl &media_url, const QUrl &stream_url, const TrackChangeFlags, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec) {
 
   Q_UNUSED(force_stop_at_end);
 
+  media_url_ = media_url;
   stream_url_ = stream_url;
-  original_url_ = original_url;
   beginning_nanosec_ = beginning_nanosec;
   end_nanosec_ = end_nanosec;
 
@@ -89,9 +119,9 @@ bool Engine::Base::Load(const QUrl &stream_url, const QUrl &original_url, const 
 
 }
 
-bool Engine::Base::Play(const QUrl &stream_url, const QUrl &original_url, const TrackChangeFlags flags, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec, const quint64 offset_nanosec) {
+bool EngineBase::Play(const QUrl &media_url, const QUrl &stream_url, const TrackChangeFlags flags, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec, const quint64 offset_nanosec) {
 
-  if (!Load(stream_url, original_url, flags, force_stop_at_end, beginning_nanosec, end_nanosec)) {
+  if (!Load(media_url, stream_url, flags, force_stop_at_end, beginning_nanosec, end_nanosec)) {
     return false;
   }
 
@@ -99,21 +129,21 @@ bool Engine::Base::Play(const QUrl &stream_url, const QUrl &original_url, const 
 
 }
 
-void Engine::Base::UpdateVolume(const uint volume) {
+void EngineBase::UpdateVolume(const uint volume) {
 
   volume_ = volume;
   emit VolumeChanged(volume);
 
 }
 
-void Engine::Base::SetVolume(const uint volume) {
+void EngineBase::SetVolume(const uint volume) {
 
   volume_ = volume;
   SetVolumeSW(volume);
 
 }
 
-void Engine::Base::ReloadSettings() {
+void EngineBase::ReloadSettings() {
 
   QSettings s;
 
@@ -156,6 +186,8 @@ void Engine::Base::ReloadSettings() {
     qLog(Debug) << "SOUP_FORCE_HTTP1:" << (http2_enabled_ ? "OFF" : "ON");
   }
 
+  strict_ssl_enabled_ = s.value("strict_ssl", false).toBool();
+
   s.endGroup();
 
   s.beginGroup(NetworkProxySettingsPage::kSettingsGroup);
@@ -187,17 +219,19 @@ void Engine::Base::ReloadSettings() {
 
 }
 
-void Engine::Base::EmitAboutToEnd() {
+void EngineBase::EmitAboutToFinish() {
 
   if (about_to_end_emitted_) {
     return;
   }
 
   about_to_end_emitted_ = true;
+
   emit TrackAboutToEnd();
+
 }
 
-bool Engine::Base::ValidOutput(const QString &output) {
+bool EngineBase::ValidOutput(const QString &output) {
 
   Q_UNUSED(output);
 

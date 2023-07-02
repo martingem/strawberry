@@ -115,6 +115,7 @@ jobs:
             curl
             gettext
             lsb-release
+            rsync
             dpkg-dev
             libglib2.0-dev
             libboost-dev

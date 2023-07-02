@@ -31,6 +31,7 @@
 #include <QFile>
 #include <QList>
 #include <QByteArray>
+#include <QByteArrayList>
 #include <QString>
 #include <QUrl>
 #include <QRegularExpression>
@@ -45,9 +46,7 @@
 #include <QTcpSocket>
 #include <QSslSocket>
 #include <QDateTime>
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
-#  include <QRandomGenerator>
-#endif
+#include <QRandomGenerator>
 
 LocalRedirectServer::LocalRedirectServer(QObject *parent)
     : QTcpServer(parent),
@@ -151,11 +150,7 @@ bool LocalRedirectServer::GenerateCertificate() {
     return false;
   }
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
-  quint64 serial = 9999999 + QRandomGenerator::global()->bounded(1000000);
-#else
-  quint64 serial = (9999999 + qrand() % 1000000);
-#endif
+  const quint64 serial = 9999999 + QRandomGenerator::global()->bounded(1000000);
 
   QByteArray q_serial;
   q_serial.setNum(serial);
@@ -377,7 +372,7 @@ void LocalRedirectServer::WriteTemplate() const {
 
 QUrl LocalRedirectServer::ParseUrlFromRequest(const QByteArray &request) const {
 
-  QList<QByteArray> lines = request.split('\r');
+  const QByteArrayList lines = request.split('\r');
   const QByteArray &request_line = lines[0];
   QByteArray path = request_line.split(' ')[1];
   QUrl base_url = url_;

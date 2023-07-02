@@ -24,13 +24,13 @@
 
 #include <CoreAudio/AudioHardware.h>
 
-#include <QList>
 #include <QString>
 
 #include "core/logging.h"
 #include "core/scoped_cftyperef.h"
 
 #include "macosdevicefinder.h"
+#include "enginedevice.h"
 
 namespace {
 
@@ -64,9 +64,7 @@ std::unique_ptr<T> GetProperty(const AudioDeviceID &device_id, const AudioObject
 
 MacOsDeviceFinder::MacOsDeviceFinder() : DeviceFinder("osxaudio", { "osxaudio", "osx", "osxaudiosink" }) {}
 
-QList<DeviceFinder::Device> MacOsDeviceFinder::ListDevices() {
-
-  QList<Device> ret;
+EngineDeviceList MacOsDeviceFinder::ListDevices() {
 
   AudioObjectPropertyAddress address = {
     kAudioHardwarePropertyDevices,
@@ -77,11 +75,12 @@ QList<DeviceFinder::Device> MacOsDeviceFinder::ListDevices() {
   UInt32 device_size_bytes = 0;
   std::unique_ptr<AudioDeviceID> devices = GetProperty<AudioDeviceID>(kAudioObjectSystemObject, address, &device_size_bytes);
   if (!devices) {
-    return ret;
+    return EngineDeviceList();
   }
   const UInt32 device_count = device_size_bytes / sizeof(AudioDeviceID);
 
   address.mScope = kAudioDevicePropertyScopeOutput;
+  EngineDeviceList device_list;
   for (UInt32 i = 0; i < device_count; ++i) {
     const AudioDeviceID id = devices.get()[i];
 
@@ -100,14 +99,15 @@ QList<DeviceFinder::Device> MacOsDeviceFinder::ListDevices() {
       continue;
     }
 
-    Device dev;
-    dev.value = id;
-    dev.description = QString::fromUtf8(CFStringGetCStringPtr(*device_name, CFStringGetSystemEncoding()));
-    if (dev.description.isEmpty()) dev.description = QString("Unknown device " + dev.value.toString());
-    dev.iconname = GuessIconName(dev.description);
-    ret.append(dev);
+    EngineDevice device;
+    device.value = id;
+    device.description = QString::fromUtf8(CFStringGetCStringPtr(*device_name, CFStringGetSystemEncoding()));
+    if (device.description.isEmpty()) device.description = QString("Unknown device " + device.value.toString());
+    device.iconname = device.GuessIconName();
+    device_list.append(device);
   }
-  return ret;
+
+  return device_list;
 
 }
 

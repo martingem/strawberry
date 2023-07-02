@@ -76,7 +76,7 @@ constexpr char QobuzService::kSongsFtsTable[] = "qobuz_songs_fts";
 QobuzService::QobuzService(Application *app, QObject *parent)
     : InternetService(Song::Source::Qobuz, "Qobuz", "qobuz", QobuzSettingsPage::kSettingsGroup, SettingsDialog::Page::Qobuz, app, parent),
       app_(app),
-      network_(new NetworkAccessManager(this)),
+      network_(app->network()),
       url_handler_(new QobuzUrlHandler(app, this)),
       artists_collection_backend_(nullptr),
       albums_collection_backend_(nullptr),
@@ -258,7 +258,7 @@ void QobuzService::ReloadSettings() {
 
 }
 
-QString QobuzService::DecodeAppSecret(const QString &app_secret_base64) {
+QString QobuzService::DecodeAppSecret(const QString &app_secret_base64) const {
 
   const QByteArray appid = app_id().toUtf8();
   const QByteArray app_secret_binary = QByteArray::fromBase64(app_secret_base64.toUtf8());
@@ -756,21 +756,21 @@ uint QobuzService::GetStreamURL(const QUrl &url, QString &error) {
 
 }
 
-void QobuzService::HandleStreamURLFailure(const uint id, const QUrl &original_url, const QString &error) {
+void QobuzService::HandleStreamURLFailure(const uint id, const QUrl &media_url, const QString &error) {
 
   if (!stream_url_requests_.contains(id)) return;
   stream_url_requests_.remove(id);
 
-  emit StreamURLFailure(id, original_url, error);
+  emit StreamURLFailure(id, media_url, error);
 
 }
 
-void QobuzService::HandleStreamURLSuccess(const uint id, const QUrl &original_url, const QUrl &stream_url, const Song::FileType filetype, const int samplerate, const int bit_depth, const qint64 duration) {
+void QobuzService::HandleStreamURLSuccess(const uint id, const QUrl &media_url, const QUrl &stream_url, const Song::FileType filetype, const int samplerate, const int bit_depth, const qint64 duration) {
 
   if (!stream_url_requests_.contains(id)) return;
   stream_url_requests_.remove(id);
 
-  emit StreamURLSuccess(id, original_url, stream_url, filetype, samplerate, bit_depth, duration);
+  emit StreamURLSuccess(id, media_url, stream_url, filetype, samplerate, bit_depth, duration);
 
 }
 

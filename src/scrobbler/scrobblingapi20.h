@@ -1,6 +1,6 @@
 /*
  * Strawberry Music Player
- * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2023, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@
 
 class QNetworkReply;
 
-class Application;
+class AudioScrobbler;
 class NetworkAccessManager;
 class LocalRedirectServer;
 
@@ -45,16 +45,13 @@ class ScrobblingAPI20 : public ScrobblerService {
   Q_OBJECT
 
  public:
-  explicit ScrobblingAPI20(const QString &name, const QString &settings_group, const QString &auth_url, const QString &api_url, const bool batch, Application *app, QObject *parent = nullptr);
+  explicit ScrobblingAPI20(const QString &name, const QString &settings_group, const QString &auth_url, const QString &api_url, const bool batch, const QString &cache_file, AudioScrobbler *scrobbler, NetworkAccessManager *network, QObject *parent = nullptr);
   ~ScrobblingAPI20() override;
 
   static const char *kApiKey;
 
   void ReloadSettings() override;
   void LoadSession();
-
-  virtual NetworkAccessManager *network() const = 0;
-  virtual ScrobblerCache *cache() const = 0;
 
   bool IsEnabled() const override { return enabled_; }
   bool IsUseHTTPS() const { return https_; }
@@ -73,20 +70,25 @@ class ScrobblingAPI20 : public ScrobblerService {
   void Love() override;
 
  signals:
-  void AuthenticationComplete(bool success, QString error = QString());
+  void AuthenticationComplete(const bool success, const QString &error = QString());
 
  public slots:
-  void WriteCache() override { cache()->WriteCache(); }
+  void WriteCache() override { cache_->WriteCache(); }
 
  private slots:
   void RedirectArrived();
   void AuthenticateReplyFinished(QNetworkReply *reply);
   void UpdateNowPlayingRequestFinished(QNetworkReply *reply);
-  void ScrobbleRequestFinished(QNetworkReply *reply, const QList<quint64> &list);
-  void SingleScrobbleRequestFinished(QNetworkReply *reply, const quint64 timestamp);
+  void ScrobbleRequestFinished(QNetworkReply *reply, ScrobblerCacheItemPtrList cache_items);
+  void SingleScrobbleRequestFinished(QNetworkReply *reply, ScrobblerCacheItemPtr cache_item);
   void LoveRequestFinished(QNetworkReply *reply);
 
  private:
+  enum class ReplyResult {
+    Success,
+    ServerError,
+    APIError
+  };
 
   enum class ScrobbleErrorCode {
     NoError = 1,
@@ -123,23 +125,26 @@ class ScrobblingAPI20 : public ScrobblerService {
   static const int kScrobblesPerRequest;
 
   QNetworkReply *CreateRequest(const ParamList &request_params);
-  QByteArray GetReplyData(QNetworkReply *reply);
+  ReplyResult GetJsonObject(QNetworkReply *reply, QJsonObject &json_obj, QString &error_description);
 
   void RequestSession(const QString &token);
   void AuthError(const QString &error);
   void SendSingleScrobble(ScrobblerCacheItemPtr item);
-  void Error(const QString &error, const QVariant &debug = QVariant()) override;
+  void Error(const QString &error, const QVariant &debug = QVariant());
   static QString ErrorString(const ScrobbleErrorCode error);
   void StartSubmit(const bool initial = false) override;
   void CheckScrobblePrevSong();
 
+ protected:
   QString name_;
   QString settings_group_;
   QString auth_url_;
   QString api_url_;
   bool batch_;
 
-  Application *app_;
+  AudioScrobbler *scrobbler_;
+  NetworkAccessManager *network_;
+  ScrobblerCache *cache_;
   LocalRedirectServer *server_;
 
   bool enabled_;

@@ -33,7 +33,6 @@
 #include <QObject>
 #include <QWidget>
 #include <QScreen>
-#include <QWindow>
 #include <QMetaObject>
 #include <QThread>
 #include <QSortFilterProxyModel>
@@ -72,6 +71,7 @@
 #include <QStackedWidget>
 #include <QTabBar>
 #include <QToolButton>
+#include <QCheckBox>
 #include <QClipboard>
 
 #include "core/logging.h"
@@ -102,9 +102,8 @@
 #include "utilities/envutils.h"
 #include "utilities/filemanagerutils.h"
 #include "utilities/timeconstants.h"
-#include "engine/enginetype.h"
+#include "utilities/screenutils.h"
 #include "engine/enginebase.h"
-#include "engine/engine_fwd.h"
 #include "dialogs/errordialog.h"
 #include "dialogs/about.h"
 #include "dialogs/console.h"
@@ -845,11 +844,7 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
   QObject::connect(ui_->analyzer, &AnalyzerContainer::WheelEvent, this, &MainWindow::VolumeWheelEvent);
 
   // Statusbar widgets
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 11, 0))
   ui_->playlist_summary->setMinimumWidth(QFontMetrics(font()).horizontalAdvance("WW selected of WW tracks - [ WW:WW ]"));
-#else
-  ui_->playlist_summary->setMinimumWidth(QFontMetrics(font()).width("WW selected of WW tracks - [ WW:WW ]"));
-#endif
   ui_->status_bar_stack->setCurrentWidget(ui_->playlist_summary_page);
   QObject::connect(ui_->multi_loading_indicator, &MultiLoadingIndicator::TaskCountChange, this, &MainWindow::TaskCountChanged);
 
@@ -945,10 +940,13 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
 #ifdef Q_OS_MACOS  // Always show the mainwindow on startup for macOS
   show();
 #else
-  QSettings s;
-  s.beginGroup(BehaviourSettingsPage::kSettingsGroup);
-  const BehaviourSettingsPage::StartupBehaviour startupbehaviour = static_cast<BehaviourSettingsPage::StartupBehaviour>(s.value("startupbehaviour", static_cast<int>(BehaviourSettingsPage::StartupBehaviour::Remember)).toInt());
-  s.endGroup();
+  BehaviourSettingsPage::StartupBehaviour startupbehaviour = BehaviourSettingsPage::StartupBehaviour::Remember;
+  {
+    QSettings s;
+    s.beginGroup(BehaviourSettingsPage::kSettingsGroup);
+    startupbehaviour = static_cast<BehaviourSettingsPage::StartupBehaviour>(s.value("startupbehaviour", static_cast<int>(BehaviourSettingsPage::StartupBehaviour::Remember)).toInt());
+    s.endGroup();
+  }
   switch (startupbehaviour) {
     case BehaviourSettingsPage::StartupBehaviour::Show:
       show();
@@ -1020,7 +1018,7 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
   if (!sparkle_url.isEmpty()) {
     qLog(Debug) << "Creating Qt Sparkle updater";
     qtsparkle::Updater *updater = new qtsparkle::Updater(sparkle_url, this);
-    updater->SetNetworkAccessManager(new NetworkAccessManager(this));
+    updater->SetNetworkAccessManager(app->network());
     updater->SetVersion(STRAWBERRY_VERSION_PACKAGE);
     QObject::connect(check_updates, &QAction::triggered, updater, &qtsparkle::Updater::CheckNow);
   }
@@ -1028,21 +1026,31 @@ MainWindow::MainWindow(Application *app, std::shared_ptr<SystemTrayIcon> tray_ic
 
 #ifdef Q_OS_LINUX
   if (!Utilities::GetEnv("SNAP").isEmpty() && !Utilities::GetEnv("SNAP_NAME").isEmpty()) {
+    QSettings s;
     s.beginGroup(kSettingsGroup);
-    if (!s.value("ignore_snap", false).toBool()) {
-      SnapDialog *snap_dialog = new SnapDialog();
+    const bool ignore_snap = s.value("ignore_snap", false).toBool();
+    s.endGroup();
+    if (!ignore_snap) {
+      SnapDialog *snap_dialog = new SnapDialog(this);
       snap_dialog->setAttribute(Qt::WA_DeleteOnClose);
       snap_dialog->show();
     }
-    s.endGroup();
   }
 #endif
 
 #if defined(Q_OS_MACOS)
   if (Utilities::ProcessTranslated()) {
-    QErrorMessage *error_message = new QErrorMessage;
-    error_message->setAttribute(Qt::WA_DeleteOnClose);
-    error_message->showMessage(tr("It is detected that Strawberry is running under Rosetta. Strawberry currently have limited macOS support, and running Strawberry under Rosetta is unsupported and known to have issues. If you want to use Strawberry on the current CPU, you should build Strawberry from source. For instructions see.: https://wiki.strawberrymusicplayer.org/wiki/Compile"));
+    QSettings s;
+    s.beginGroup(kSettingsGroup);
+    const bool ignore_rosetta = s.value("ignore_rosetta", false).toBool();
+    s.endGroup();
+    if (!ignore_rosetta) {
+      MessageDialog *rosetta_message = new MessageDialog(this);
+      rosetta_message->set_settings_group(kSettingsGroup);
+      rosetta_message->set_do_not_show_message_again("ignore_rosetta");
+      rosetta_message->setAttribute(Qt::WA_DeleteOnClose);
+      rosetta_message->ShowMessage(tr("Strawberry running under Rosetta"), tr("It seems that Strawberry is running under Rosetta. Strawberry currently has limited macOS support, and running Strawberry under Rosetta is unsupported and known to have issues. If you want to use Strawberry on the current CPU, you should build Strawberry from source. For instructions see.: https://wiki.strawberrymusicplayer.org/wiki/Compile"), IconLoader::Load("dialog-warning"));
+    }
   }
 #endif
 
@@ -1169,7 +1177,7 @@ void MainWindow::ReloadAllSettings() {
   collection_view_->ReloadSettings();
   ui_->playlist->view()->ReloadSettings();
   app_->playlist_manager()->playlist_container()->ReloadSettings();
-  app_->album_cover_loader()->ReloadSettings();
+  app_->current_albumcover_loader()->ReloadSettingsAsync();
   album_cover_choice_controller_->ReloadSettings();
   context_view_->ReloadSettings();
   file_view_->ReloadSettings();
@@ -1233,7 +1241,7 @@ void MainWindow::Exit() {
     if (app_->player()->engine()->is_fadeout_enabled()) {
       // To shut down the application when fadeout will be finished
       QObject::connect(app_->player()->engine(), &EngineBase::FadeoutFinishedSignal, this, &MainWindow::DoExit);
-      if (app_->player()->GetState() == Engine::State::Playing) {
+      if (app_->player()->GetState() == EngineBase::State::Playing) {
         app_->player()->Stop();
         ignore_close_ = true;
         close();
@@ -1262,11 +1270,11 @@ void MainWindow::ExitFinished() {
 
 }
 
-void MainWindow::EngineChanged(Engine::EngineType enginetype) {
+void MainWindow::EngineChanged(const EngineBase::Type enginetype) {
 
-  ui_->action_equalizer->setEnabled(enginetype == Engine::EngineType::GStreamer);
+  ui_->action_equalizer->setEnabled(enginetype == EngineBase::Type::GStreamer);
 #if defined(HAVE_AUDIOCD) && !defined(Q_OS_WIN)
-  ui_->action_open_cd->setEnabled(enginetype == Engine::EngineType::GStreamer);
+  ui_->action_open_cd->setEnabled(enginetype == EngineBase::Type::GStreamer);
 #else
   ui_->action_open_cd->setEnabled(false);
   ui_->action_open_cd->setVisible(false);
@@ -1374,14 +1382,14 @@ void MainWindow::SongChanged(const Song &song) {
   SendNowPlaying();
 
   const bool enable_change_art = song.is_collection_song() && !song.effective_albumartist().isEmpty() && !song.album().isEmpty();
-  album_cover_choice_controller_->show_cover_action()->setEnabled(song.has_valid_art() && !song.has_manually_unset_cover());
-  album_cover_choice_controller_->cover_to_file_action()->setEnabled(song.has_valid_art() && !song.has_manually_unset_cover());
+  album_cover_choice_controller_->show_cover_action()->setEnabled(song.has_valid_art() && !song.art_unset());
+  album_cover_choice_controller_->cover_to_file_action()->setEnabled(song.has_valid_art() && !song.art_unset());
   album_cover_choice_controller_->cover_from_file_action()->setEnabled(enable_change_art);
   album_cover_choice_controller_->cover_from_url_action()->setEnabled(enable_change_art);
   album_cover_choice_controller_->search_for_cover_action()->setEnabled(app_->cover_providers()->HasAnyProviders() && enable_change_art);
-  album_cover_choice_controller_->unset_cover_action()->setEnabled(enable_change_art && !song.has_manually_unset_cover());
+  album_cover_choice_controller_->unset_cover_action()->setEnabled(enable_change_art && !song.art_unset());
   album_cover_choice_controller_->clear_cover_action()->setEnabled(enable_change_art && !song.art_manual().isEmpty());
-  album_cover_choice_controller_->delete_cover_action()->setEnabled(enable_change_art && song.has_valid_art() && !song.has_manually_unset_cover());
+  album_cover_choice_controller_->delete_cover_action()->setEnabled(enable_change_art && (song.art_embedded() || !song.art_automatic().isEmpty() || !song.art_manual().isEmpty()));
 
 }
 
@@ -1447,7 +1455,7 @@ void MainWindow::SavePlaybackStatus() {
 
   s.beginGroup(Player::kSettingsGroup);
   s.setValue("playback_state", static_cast<int>(app_->player()->GetState()));
-  if (app_->player()->GetState() == Engine::State::Playing || app_->player()->GetState() == Engine::State::Paused) {
+  if (app_->player()->GetState() == EngineBase::State::Playing || app_->player()->GetState() == EngineBase::State::Paused) {
     s.setValue("playback_playlist", app_->playlist_manager()->active()->id());
     s.setValue("playback_position", app_->player()->engine()->position_nanosec() / kNsecPerSec);
   }
@@ -1469,10 +1477,10 @@ void MainWindow::LoadPlaybackStatus() {
   s.endGroup();
 
   s.beginGroup(Player::kSettingsGroup);
-  const Engine::State playback_state = static_cast<Engine::State>(s.value("playback_state", static_cast<int>(Engine::State::Empty)).toInt());
+  const EngineBase::State playback_state = static_cast<EngineBase::State>(s.value("playback_state", static_cast<int>(EngineBase::State::Empty)).toInt());
   s.endGroup();
 
-  if (resume_playback && playback_state != Engine::State::Empty && playback_state != Engine::State::Idle) {
+  if (resume_playback && playback_state != EngineBase::State::Empty && playback_state != EngineBase::State::Idle) {
     std::shared_ptr<QMetaObject::Connection> connection = std::make_shared<QMetaObject::Connection>();
     *connection = QObject::connect(app_->playlist_manager(), &PlaylistManager::AllPlaylistsLoaded, this, [this, connection]() {
       QObject::disconnect(*connection);
@@ -1488,7 +1496,7 @@ void MainWindow::ResumePlayback() {
 
   QSettings s;
   s.beginGroup(Player::kSettingsGroup);
-  const Engine::State playback_state = static_cast<Engine::State>(s.value("playback_state", static_cast<int>(Engine::State::Empty)).toInt());
+  const EngineBase::State playback_state = static_cast<EngineBase::State>(s.value("playback_state", static_cast<int>(EngineBase::State::Empty)).toInt());
   int playback_playlist = s.value("playback_playlist", -1).toInt();
   int playback_position = s.value("playback_position", 0).toInt();
   s.endGroup();
@@ -1496,7 +1504,7 @@ void MainWindow::ResumePlayback() {
   if (playback_playlist == app_->playlist_manager()->current()->id()) {
     // Set active to current to resume playback on correct playlist.
     app_->playlist_manager()->SetActiveToCurrent();
-    if (playback_state == Engine::State::Paused) {
+    if (playback_state == EngineBase::State::Paused) {
       std::shared_ptr<QMetaObject::Connection> connection = std::make_shared<QMetaObject::Connection>();
       *connection = QObject::connect(app_->player(), &Player::Playing, app_->player(), [this, connection]() {
         QObject::disconnect(*connection);
@@ -1508,7 +1516,7 @@ void MainWindow::ResumePlayback() {
 
   // Reset saved playback status so we don't resume again from the same position.
   s.beginGroup(Player::kSettingsGroup);
-  s.setValue("playback_state", static_cast<int>(Engine::State::Empty));
+  s.setValue("playback_state", static_cast<int>(EngineBase::State::Empty));
   s.setValue("playback_playlist", -1);
   s.setValue("playback_position", 0);
   s.endGroup();
@@ -1526,7 +1534,7 @@ void MainWindow::PlayIndex(const QModelIndex &idx, Playlist::AutoScroll autoscro
   }
 
   app_->playlist_manager()->SetActiveToCurrent();
-  app_->player()->PlayAt(row, 0, Engine::TrackChangeType::Manual, autoscroll, true);
+  app_->player()->PlayAt(row, 0, EngineBase::TrackChangeType::Manual, autoscroll, true);
 
 }
 
@@ -1543,14 +1551,14 @@ void MainWindow::PlaylistDoubleClick(const QModelIndex &idx) {
   switch (doubleclick_playlist_addmode_) {
     case BehaviourSettingsPage::PlaylistAddBehaviour::Play:
       app_->playlist_manager()->SetActiveToCurrent();
-      app_->player()->PlayAt(source_idx.row(), 0, Engine::TrackChangeType::Manual, Playlist::AutoScroll::Never, true, true);
+      app_->player()->PlayAt(source_idx.row(), 0, EngineBase::TrackChangeType::Manual, Playlist::AutoScroll::Never, true, true);
       break;
 
     case BehaviourSettingsPage::PlaylistAddBehaviour::Enqueue:
       app_->playlist_manager()->current()->queue()->ToggleTracks(QModelIndexList() << source_idx);
-      if (app_->player()->GetState() != Engine::State::Playing) {
+      if (app_->player()->GetState() != EngineBase::State::Playing) {
         app_->playlist_manager()->SetActiveToCurrent();
-        app_->player()->PlayAt(app_->playlist_manager()->current()->queue()->TakeNext(), 0, Engine::TrackChangeType::Manual, Playlist::AutoScroll::Never, true);
+        app_->player()->PlayAt(app_->playlist_manager()->current()->queue()->TakeNext(), 0, EngineBase::TrackChangeType::Manual, Playlist::AutoScroll::Never, true);
       }
       break;
   }
@@ -1736,7 +1744,7 @@ void MainWindow::ApplyPlayBehaviour(const BehaviourSettingsPage::PlayBehaviour b
       break;
 
     case BehaviourSettingsPage::PlayBehaviour::IfStopped:
-      mimedata->play_now_ = !(app_->player()->GetState() == Engine::State::Playing);
+      mimedata->play_now_ = !(app_->player()->GetState() == EngineBase::State::Playing);
       break;
   }
 }
@@ -1822,7 +1830,7 @@ void MainWindow::PlaylistRightClick(const QPoint global_pos, const QModelIndex &
   playlist_menu_index_ = source_index;
 
   // Is this song currently playing?
-  if (app_->playlist_manager()->current()->current_row() == source_index.row() && app_->player()->GetState() == Engine::State::Playing) {
+  if (app_->playlist_manager()->current()->current_row() == source_index.row() && app_->player()->GetState() == EngineBase::State::Playing) {
     playlist_play_pause_->setText(tr("Pause"));
     playlist_play_pause_->setIcon(IconLoader::Load("media-playback-pause"));
   }
@@ -2152,7 +2160,7 @@ void MainWindow::SongSaveComplete(TagReaderReply *reply, const QPersistentModelI
   if (reply->is_successful() && idx.isValid()) {
     app_->playlist_manager()->current()->ReloadItems(QList<int>() << idx.row());
   }
-  QMetaObject::invokeMethod(reply, "deleteLater", Qt::QueuedConnection);
+  reply->deleteLater();
 
 }
 
@@ -2323,9 +2331,7 @@ void MainWindow::PlaylistEditFinished(const int playlist_id, const QModelIndex &
 
 }
 
-void MainWindow::CommandlineOptionsReceived(const quint32 instanceId, const QByteArray &string_options) {
-
-  Q_UNUSED(instanceId);
+void MainWindow::CommandlineOptionsReceived(const QByteArray &string_options) {
 
   CommandlineOptions options;
   options.Load(string_options);
@@ -2335,9 +2341,10 @@ void MainWindow::CommandlineOptionsReceived(const quint32 instanceId, const QByt
     show();
     activateWindow();
     hidden_ = false;
+    return;
   }
-  else
-    CommandlineOptionsReceived(options);
+
+  CommandlineOptionsReceived(options);
 
 }
 
@@ -2390,11 +2397,7 @@ void MainWindow::CommandlineOptionsReceived(const CommandlineOptions &options) {
         if (w_ok && h_ok) {
           QSize window_size(w, h);
           if (window_size.isValid()) {
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
-            QScreen *screen = QWidget::screen();
-#else
-            QScreen *screen = (window() && window()->windowHandle() ? window()->windowHandle()->screen() : nullptr);
-#endif
+            QScreen *screen = Utilities::GetScreen(this);
             if (screen) {
               const QRect sr = screen->availableGeometry();
               window_size = window_size.boundedTo(sr.size());
@@ -2471,7 +2474,7 @@ void MainWindow::CommandlineOptionsReceived(const CommandlineOptions &options) {
     app_->player()->SeekTo(app_->player()->engine()->position_nanosec() / kNsecPerSec + options.seek_by());
   }
 
-  if (options.play_track_at() != -1) app_->player()->PlayAt(options.play_track_at(), 0, Engine::TrackChangeType::Manual, Playlist::AutoScroll::Maybe, true);
+  if (options.play_track_at() != -1) app_->player()->PlayAt(options.play_track_at(), 0, EngineBase::TrackChangeType::Manual, Playlist::AutoScroll::Maybe, true);
 
   if (options.show_osd()) app_->player()->ShowOSD();
 
@@ -2924,7 +2927,7 @@ void MainWindow::AutoCompleteTags() {
 
   // Create the tag fetching stuff if it hasn't been already
   if (!tag_fetcher_) {
-    tag_fetcher_ = std::make_unique<TagFetcher>();
+    tag_fetcher_ = std::make_unique<TagFetcher>(app_->network());
     track_selection_dialog_ = std::make_unique<TrackSelectionDialog>();
     track_selection_dialog_->set_save_on_close(true);
 
@@ -3070,14 +3073,14 @@ void MainWindow::AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResult
   emit AlbumCoverReady(song, result.album_cover.image);
 
   const bool enable_change_art = song.is_collection_song() && !song.effective_albumartist().isEmpty() && !song.album().isEmpty();
-  album_cover_choice_controller_->show_cover_action()->setEnabled(result.success && result.type != AlbumCoverLoaderResult::Type_ManuallyUnset);
-  album_cover_choice_controller_->cover_to_file_action()->setEnabled(result.success && result.type != AlbumCoverLoaderResult::Type_ManuallyUnset);
+  album_cover_choice_controller_->show_cover_action()->setEnabled(result.success && result.type != AlbumCoverLoaderResult::Type::Unset);
+  album_cover_choice_controller_->cover_to_file_action()->setEnabled(result.success && result.type != AlbumCoverLoaderResult::Type::Unset);
   album_cover_choice_controller_->cover_from_file_action()->setEnabled(enable_change_art);
   album_cover_choice_controller_->cover_from_url_action()->setEnabled(enable_change_art);
   album_cover_choice_controller_->search_for_cover_action()->setEnabled(app_->cover_providers()->HasAnyProviders() && enable_change_art);
-  album_cover_choice_controller_->unset_cover_action()->setEnabled(enable_change_art && !song.has_manually_unset_cover());
+  album_cover_choice_controller_->unset_cover_action()->setEnabled(enable_change_art && !song.art_unset());
   album_cover_choice_controller_->clear_cover_action()->setEnabled(enable_change_art && !song.art_manual().isEmpty());
-  album_cover_choice_controller_->delete_cover_action()->setEnabled(enable_change_art && result.success && result.type != AlbumCoverLoaderResult::Type_ManuallyUnset);
+  album_cover_choice_controller_->delete_cover_action()->setEnabled(enable_change_art && result.success && result.type != AlbumCoverLoaderResult::Type::Unset);
 
   GetCoverAutomatically();
 
@@ -3086,13 +3089,13 @@ void MainWindow::AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResult
 void MainWindow::GetCoverAutomatically() {
 
   // Search for cover automatically?
-  bool search =
-                album_cover_choice_controller_->search_cover_auto_action()->isChecked() &&
-                !song_.has_manually_unset_cover() &&
-                !song_.art_automatic_is_valid() &&
-                !song_.art_manual_is_valid() &&
-                !song_.effective_albumartist().isEmpty() &&
-                !song_.effective_album().isEmpty();
+  const bool search = album_cover_choice_controller_->search_cover_auto_action()->isChecked() &&
+                      !song_.art_unset() &&
+                      !song_.art_embedded() &&
+                      !song_.art_automatic_is_valid() &&
+                      !song_.art_manual_is_valid() &&
+                      !song_.effective_albumartist().isEmpty() &&
+                      !song_.effective_album().isEmpty();
 
   if (search) {
     emit SearchCoverInProgress();
@@ -3168,13 +3171,13 @@ void MainWindow::PlaylistDelete() {
 
   if (DeleteConfirmationDialog::warning(files) != QDialogButtonBox::Yes) return;
 
-  if (app_->player()->GetState() == Engine::State::Playing && app_->playlist_manager()->current()->rowCount() == selected_songs.count()) {
+  if (app_->player()->GetState() == EngineBase::State::Playing && app_->playlist_manager()->current()->rowCount() == selected_songs.count()) {
     app_->player()->Stop();
   }
 
   ui_->playlist->view()->RemoveSelected();
 
-  if (app_->player()->GetState() == Engine::State::Playing && is_current_item) {
+  if (app_->player()->GetState() == EngineBase::State::Playing && is_current_item) {
     app_->player()->Next();
   }
 

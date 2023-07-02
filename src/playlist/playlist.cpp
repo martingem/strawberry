@@ -420,7 +420,7 @@ void Playlist::SongSaveComplete(TagReaderReply *reply, const QPersistentModelInd
     }
   }
 
-  QMetaObject::invokeMethod(reply, "deleteLater", Qt::QueuedConnection);
+  reply->deleteLater();
 
 }
 
@@ -1490,7 +1490,7 @@ void Playlist::ScheduleSaveAsync() {
     ScheduleSave();
   }
   else {
-    QMetaObject::invokeMethod(this, "ScheduleSave", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, &Playlist::ScheduleSave, Qt::QueuedConnection);
   }
 
 }
@@ -2319,9 +2319,9 @@ void Playlist::UpdateScrobblePoint(const qint64 seek_point_nanosec) {
 void Playlist::AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResult &result) {
 
   // Update art_manual for local songs that are not in the collection.
-  if (((result.type == AlbumCoverLoaderResult::Type_Manual && result.album_cover.cover_url.isLocalFile()) || result.type == AlbumCoverLoaderResult::Type_ManuallyUnset) && (song.source() == Song::Source::LocalFile || song.source() == Song::Source::CDDA || song.source() == Song::Source::Device)) {
+  if (((result.type == AlbumCoverLoaderResult::Type::Manual && result.album_cover.cover_url.isLocalFile()) || result.type == AlbumCoverLoaderResult::Type::Unset) && (song.source() == Song::Source::LocalFile || song.source() == Song::Source::CDDA || song.source() == Song::Source::Device)) {
     PlaylistItemPtr item = current_item();
-    if (item && item->Metadata() == song && (!item->Metadata().art_manual_is_valid() || (result.type == AlbumCoverLoaderResult::Type_ManuallyUnset && !item->Metadata().has_manually_unset_cover()))) {
+    if (item && item->Metadata() == song && (!item->Metadata().art_manual_is_valid() || (result.type == AlbumCoverLoaderResult::Type::Unset && !item->Metadata().art_unset()))) {
       qLog(Debug) << "Updating art manual for local song" << song.title() << song.album() << song.title() << "to" << result.album_cover.cover_url << "in playlist.";
       item->SetArtManual(result.album_cover.cover_url);
       ScheduleSaveAsync();

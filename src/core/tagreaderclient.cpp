@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
- * Copyright 2019-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2019-2023, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,8 +38,6 @@
 #include "tagreaderclient.h"
 #include "settings/collectionsettingspage.h"
 
-#define DataCommaSizeFromQString(x) (x).toUtf8().constData(), (x).toUtf8().length()
-
 const char *TagReaderClient::kWorkerExecutableName = "strawberry-tagreader";
 TagReaderClient *TagReaderClient::sInstance = nullptr;
 
@@ -48,15 +46,7 @@ TagReaderClient::TagReaderClient(QObject *parent) : QObject(parent), worker_pool
   sInstance = this;
   original_thread_ = thread();
 
-  QSettings s;
-  s.beginGroup(CollectionSettingsPage::kSettingsGroup);
-  int workers = s.value("tagreader_workers", qBound(1, QThread::idealThreadCount() / 2, 4)).toInt();
-  s.endGroup();
-
-  qLog(Debug) << "Using" << workers << "tagreader workers.";
-
   worker_pool_->SetExecutableName(kWorkerExecutableName);
-  worker_pool_->SetWorkerCount(workers);
   QObject::connect(worker_pool_, &WorkerPool<HandlerType>::WorkerFailedToStart, this, &TagReaderClient::WorkerFailedToStart);
 
 }
@@ -64,7 +54,7 @@ TagReaderClient::TagReaderClient(QObject *parent) : QObject(parent), worker_pool
 void TagReaderClient::Start() { worker_pool_->Start(); }
 
 void TagReaderClient::ExitAsync() {
-  QMetaObject::invokeMethod(this, "Exit", Qt::QueuedConnection);
+  QMetaObject::invokeMethod(this, &TagReaderClient::Exit, Qt::QueuedConnection);
 }
 
 void TagReaderClient::Exit() {
@@ -82,9 +72,10 @@ void TagReaderClient::WorkerFailedToStart() {
 TagReaderReply *TagReaderClient::IsMediaFile(const QString &filename) {
 
   spb::tagreader::Message message;
-  spb::tagreader::IsMediaFileRequest *req = message.mutable_is_media_file_request();
+  spb::tagreader::IsMediaFileRequest *request = message.mutable_is_media_file_request();
 
-  req->set_filename(DataCommaSizeFromQString(filename));
+  const QByteArray filename_data = filename.toUtf8();
+  request->set_filename(filename_data.constData(), filename_data.length());
 
   return worker_pool_->SendMessageWithReply(&message);
 
@@ -93,21 +84,40 @@ TagReaderReply *TagReaderClient::IsMediaFile(const QString &filename) {
 TagReaderReply *TagReaderClient::ReadFile(const QString &filename) {
 
   spb::tagreader::Message message;
-  spb::tagreader::ReadFileRequest *req = message.mutable_read_file_request();
+  spb::tagreader::ReadFileRequest *request = message.mutable_read_file_request();
 
-  req->set_filename(DataCommaSizeFromQString(filename));
+  const QByteArray filename_data = filename.toUtf8();
+  request->set_filename(filename_data.constData(), filename_data.length());
 
   return worker_pool_->SendMessageWithReply(&message);
 
 }
 
-TagReaderReply *TagReaderClient::SaveFile(const QString &filename, const Song &metadata) {
+TagReaderReply *TagReaderClient::SaveFile(const QString &filename, const Song &metadata, const SaveTypes save_types, const SaveCoverOptions &save_cover_options) {
 
   spb::tagreader::Message message;
-  spb::tagreader::SaveFileRequest *req = message.mutable_save_file_request();
+  spb::tagreader::SaveFileRequest *request = message.mutable_save_file_request();
 
-  req->set_filename(DataCommaSizeFromQString(filename));
-  metadata.ToProtobuf(req->mutable_metadata());
+  const QByteArray filename_data = filename.toUtf8();
+  request->set_filename(filename_data.constData(), filename_data.length());
+
+  request->set_save_tags(save_types.testFlag(SaveType::Tags));
+  request->set_save_playcount(save_types.testFlag(SaveType::PlayCount));
+  request->set_save_rating(save_types.testFlag(SaveType::Rating));
+  request->set_save_cover(save_types.testFlag(SaveType::Cover));
+
+  if (save_cover_options.cover_filename.length() > 0) {
+    const QByteArray cover_filename = save_cover_options.cover_filename.toUtf8();
+    request->set_cover_filename(cover_filename.constData(), cover_filename.length());
+  }
+  if (save_cover_options.cover_data.length() > 0) {
+    request->set_cover_data(save_cover_options.cover_data.constData(), save_cover_options.cover_data.length());
+  }
+  if (save_cover_options.mime_type.length() > 0) {
+    const QByteArray cover_mime_type = save_cover_options.mime_type.toUtf8();
+    request->set_cover_mime_type(cover_mime_type.constData(), cover_mime_type.length());
+  }
+  metadata.ToProtobuf(request->mutable_metadata());
 
   ReplyType *reply = worker_pool_->SendMessageWithReply(&message);
 
@@ -118,21 +128,33 @@ TagReaderReply *TagReaderClient::SaveFile(const QString &filename, const Song &m
 TagReaderReply *TagReaderClient::LoadEmbeddedArt(const QString &filename) {
 
   spb::tagreader::Message message;
-  spb::tagreader::LoadEmbeddedArtRequest *req = message.mutable_load_embedded_art_request();
+  spb::tagreader::LoadEmbeddedArtRequest *request = message.mutable_load_embedded_art_request();
 
-  req->set_filename(DataCommaSizeFromQString(filename));
+  const QByteArray filename_data = filename.toUtf8();
+  request->set_filename(filename_data.constData(), filename_data.length());
 
   return worker_pool_->SendMessageWithReply(&message);
 
 }
 
-TagReaderReply *TagReaderClient::SaveEmbeddedArt(const QString &filename, const QByteArray &data) {
+TagReaderReply *TagReaderClient::SaveEmbeddedArt(const QString &filename, const SaveCoverOptions &save_cover_options) {
 
   spb::tagreader::Message message;
-  spb::tagreader::SaveEmbeddedArtRequest *req = message.mutable_save_embedded_art_request();
+  spb::tagreader::SaveEmbeddedArtRequest *request = message.mutable_save_embedded_art_request();
 
-  req->set_filename(DataCommaSizeFromQString(filename));
-  req->set_data(data.constData(), data.size());
+  const QByteArray filename_data = filename.toUtf8();
+  request->set_filename(filename_data.constData(), filename_data.length());
+  if (save_cover_options.cover_filename.length() > 0) {
+    const QByteArray cover_filename = save_cover_options.cover_filename.toUtf8();
+    request->set_cover_filename(cover_filename.constData(), cover_filename.length());
+  }
+  if (save_cover_options.cover_data.length() > 0) {
+    request->set_cover_data(save_cover_options.cover_data.constData(), save_cover_options.cover_data.length());
+  }
+  if (save_cover_options.mime_type.length() > 0) {
+    const QByteArray cover_mime_type = save_cover_options.mime_type.toUtf8();
+    request->set_cover_mime_type(cover_mime_type.constData(), cover_mime_type.length());
+  }
 
   return worker_pool_->SendMessageWithReply(&message);
 
@@ -141,10 +163,11 @@ TagReaderReply *TagReaderClient::SaveEmbeddedArt(const QString &filename, const 
 TagReaderReply *TagReaderClient::UpdateSongPlaycount(const Song &metadata) {
 
   spb::tagreader::Message message;
-  spb::tagreader::SaveSongPlaycountToFileRequest *req = message.mutable_save_song_playcount_to_file_request();
+  spb::tagreader::SaveSongPlaycountToFileRequest *request = message.mutable_save_song_playcount_to_file_request();
 
-  req->set_filename(DataCommaSizeFromQString(metadata.url().toLocalFile()));
-  metadata.ToProtobuf(req->mutable_metadata());
+  const QByteArray filename_data = metadata.url().toLocalFile().toUtf8();
+  request->set_filename(filename_data.constData(), filename_data.length());
+  metadata.ToProtobuf(request->mutable_metadata());
 
   return worker_pool_->SendMessageWithReply(&message);
 
@@ -162,10 +185,11 @@ void TagReaderClient::UpdateSongsPlaycount(const SongList &songs) {
 TagReaderReply *TagReaderClient::UpdateSongRating(const Song &metadata) {
 
   spb::tagreader::Message message;
-  spb::tagreader::SaveSongRatingToFileRequest *req = message.mutable_save_song_rating_to_file_request();
+  spb::tagreader::SaveSongRatingToFileRequest *request = message.mutable_save_song_rating_to_file_request();
 
-  req->set_filename(DataCommaSizeFromQString(metadata.url().toLocalFile()));
-  metadata.ToProtobuf(req->mutable_metadata());
+  const QByteArray filename_data = metadata.url().toLocalFile().toUtf8();
+  request->set_filename(filename_data.constData(), filename_data.length());
+  metadata.ToProtobuf(request->mutable_metadata());
 
   return worker_pool_->SendMessageWithReply(&message);
 
@@ -190,7 +214,7 @@ bool TagReaderClient::IsMediaFileBlocking(const QString &filename) {
   if (reply->WaitForFinished()) {
     ret = reply->message().is_media_file_response().success();
   }
-  QMetaObject::invokeMethod(reply, "deleteLater", Qt::QueuedConnection);
+  reply->deleteLater();
 
   return ret;
 
@@ -204,21 +228,21 @@ void TagReaderClient::ReadFileBlocking(const QString &filename, Song *song) {
   if (reply->WaitForFinished()) {
     song->InitFromProtobuf(reply->message().read_file_response().metadata());
   }
-  QMetaObject::invokeMethod(reply, "deleteLater", Qt::QueuedConnection);
+  reply->deleteLater();
 
 }
 
-bool TagReaderClient::SaveFileBlocking(const QString &filename, const Song &metadata) {
+bool TagReaderClient::SaveFileBlocking(const QString &filename, const Song &metadata, const SaveTypes save_types, const SaveCoverOptions &save_cover_options) {
 
   Q_ASSERT(QThread::currentThread() != thread());
 
   bool ret = false;
 
-  TagReaderReply *reply = SaveFile(filename, metadata);
+  TagReaderReply *reply = SaveFile(filename, metadata, save_types, save_cover_options);
   if (reply->WaitForFinished()) {
     ret = reply->message().save_file_response().success();
   }
-  QMetaObject::invokeMethod(reply, "deleteLater", Qt::QueuedConnection);
+  reply->deleteLater();
 
   return ret;
 
@@ -235,7 +259,7 @@ QByteArray TagReaderClient::LoadEmbeddedArtBlocking(const QString &filename) {
     const std::string &data_str = reply->message().load_embedded_art_response().data();
     ret = QByteArray(data_str.data(), static_cast<qint64>(data_str.size()));
   }
-  QMetaObject::invokeMethod(reply, "deleteLater", Qt::QueuedConnection);
+  reply->deleteLater();
 
   return ret;
 
@@ -252,23 +276,23 @@ QImage TagReaderClient::LoadEmbeddedArtAsImageBlocking(const QString &filename) 
     const std::string &data_str = reply->message().load_embedded_art_response().data();
     ret.loadFromData(QByteArray(data_str.data(), static_cast<qint64>(data_str.size())));
   }
-  QMetaObject::invokeMethod(reply, "deleteLater", Qt::QueuedConnection);
+  reply->deleteLater();
 
   return ret;
 
 }
 
-bool TagReaderClient::SaveEmbeddedArtBlocking(const QString &filename, const QByteArray &data) {
+bool TagReaderClient::SaveEmbeddedArtBlocking(const QString &filename, const SaveCoverOptions &save_cover_options) {
 
   Q_ASSERT(QThread::currentThread() != thread());
 
   bool success = false;
 
-  TagReaderReply *reply = SaveEmbeddedArt(filename, data);
+  TagReaderReply *reply = SaveEmbeddedArt(filename, save_cover_options);
   if (reply->WaitForFinished()) {
     success = reply->message().save_embedded_art_response().success();
   }
-  QMetaObject::invokeMethod(reply, "deleteLater", Qt::QueuedConnection);
+  reply->deleteLater();
 
   return success;
 

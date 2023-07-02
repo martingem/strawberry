@@ -39,7 +39,6 @@
 #include <QUrl>
 
 #include "utilities/timeconstants.h"
-#include "engine_fwd.h"
 #include "enginebase.h"
 #include "gststartup.h"
 #include "gstbufferconsumer.h"
@@ -49,12 +48,7 @@ class QTimerEvent;
 class TaskManager;
 class GstEnginePipeline;
 
-/**
- * @class GstEngine
- * @short GStreamer engine plugin
- * @author Mark Kretschmann <markey@web.de>
- */
-class GstEngine : public Engine::Base, public GstBufferConsumer {
+class GstEngine : public EngineBase, public GstBufferConsumer {
   Q_OBJECT
 
  public:
@@ -63,10 +57,11 @@ class GstEngine : public Engine::Base, public GstBufferConsumer {
 
   static const char *kAutoSink;
 
+  Type type() const override { return Type::GStreamer; }
   bool Init() override;
-  Engine::State state() const override;
-  void StartPreloading(const QUrl &stream_url, const QUrl &original_url, const bool force_stop_at_end, const qint64 beginning_nanosec, const qint64 end_nanosec) override;
-  bool Load(const QUrl &stream_url, const QUrl &original_url, const Engine::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec) override;
+  EngineBase::State state() const override;
+  void StartPreloading(const QUrl &media_url, const QUrl &stream_url, const bool force_stop_at_end, const qint64 beginning_nanosec, const qint64 end_nanosec) override;
+  bool Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec) override;
   bool Play(const quint64 offset_nanosec) override;
   void Stop(const bool stop_after = false) override;
   void Pause() override;
@@ -79,7 +74,7 @@ class GstEngine : public Engine::Base, public GstBufferConsumer {
  public:
   qint64 position_nanosec() const override;
   qint64 length_nanosec() const override;
-  const Engine::Scope &scope(const int chunk_length) override;
+  const EngineBase::Scope &scope(const int chunk_length) override;
 
   OutputDetailsList GetOutputsList() const override;
   bool ValidOutput(const QString &output) override;
@@ -116,7 +111,7 @@ class GstEngine : public Engine::Base, public GstBufferConsumer {
  private slots:
   void EndOfStreamReached(const int pipeline_id, const bool has_next_track);
   void HandlePipelineError(const int pipeline_id, const int domain, const int error_code, const QString &message, const QString &debugstr);
-  void NewMetaData(const int pipeline_id, const Engine::SimpleMetaBundle &bundle);
+  void NewMetaData(const int pipeline_id, const EngineMetadata &engine_metadata);
   void AddBufferToScope(GstBuffer *buf, const int pipeline_id, const QString &format);
   void FadeoutFinished();
   void FadeoutPauseFinished();
@@ -128,7 +123,6 @@ class GstEngine : public Engine::Base, public GstBufferConsumer {
   void BufferingFinished();
 
  private:
-  PluginDetailsList GetPluginList(const QString &classname) const;
   QByteArray FixupUrl(const QUrl &url);
 
   void StartFadeout();
@@ -138,7 +132,7 @@ class GstEngine : public Engine::Base, public GstBufferConsumer {
   void StopTimers();
 
   std::shared_ptr<GstEnginePipeline> CreatePipeline();
-  std::shared_ptr<GstEnginePipeline> CreatePipeline(const QByteArray &gst_url, const QUrl &original_url, const qint64 end_nanosec);
+  std::shared_ptr<GstEnginePipeline> CreatePipeline(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 end_nanosec);
 
   void UpdateScope(int chunk_length);
 
@@ -159,9 +153,9 @@ class GstEngine : public Engine::Base, public GstBufferConsumer {
   static const char *kDirectSoundSink;
   static const char *kOSXAudioSink;
   static const int kDiscoveryTimeoutS;
-  static const qint64 kTimerIntervalNanosec = 1000 * kNsecPerMsec;  // 1s
-  static const qint64 kPreloadGapNanosec = 5000 * kNsecPerMsec;     // 5s
-  static const qint64 kSeekDelayNanosec = 100 * kNsecPerMsec;       // 100msec
+  static const qint64 kTimerIntervalNanosec;
+  static const qint64 kPreloadGapNanosec;
+  static const qint64 kSeekDelayNanosec;
 
   TaskManager *task_manager_;
   GstStartup *gst_startup_;
@@ -172,7 +166,6 @@ class GstEngine : public Engine::Base, public GstBufferConsumer {
   std::shared_ptr<GstEnginePipeline> current_pipeline_;
   std::shared_ptr<GstEnginePipeline> fadeout_pipeline_;
   std::shared_ptr<GstEnginePipeline> fadeout_pause_pipeline_;
-  QUrl preloaded_url_;
 
   QList<GstBufferConsumer*> buffer_consumers_;
 
@@ -202,7 +195,6 @@ class GstEngine : public Engine::Base, public GstBufferConsumer {
 
   int discovery_finished_cb_id_;
   int discovery_discovered_cb_id_;
-
 };
 
 #endif  // GSTENGINE_H

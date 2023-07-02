@@ -1,6 +1,6 @@
 /*
  * Strawberry Music Player
- * Copyright 2013-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2023, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,29 +17,17 @@
  *
  */
 
-#ifndef ENGINETYPE_H
-#define ENGINETYPE_H
+#ifndef SCREENUTILS_H
+#define SCREENUTILS_H
 
-#include "config.h"
+class QScreen;
+class QWidget;
 
-#include <QMetaType>
-#include <QString>
+namespace Utilities {
 
-namespace Engine {
+QScreen *GetScreen(QWidget *widget);
+void CenterWidgetOnScreen(QScreen *screen, QWidget *widget);
 
-enum class EngineType {
-  None,
-  GStreamer,
-  VLC,
-  Xine
-};
+} //  namespace Utilities
 
-Engine::EngineType EngineTypeFromName(const QString &enginename);
-QString EngineName(const Engine::EngineType enginetype);
-QString EngineDescription(const Engine::EngineType enginetype);
-
-}  // namespace Engine
-
-Q_DECLARE_METATYPE(Engine::EngineType)
-
-#endif  // ENGINETYPE_H
+#endif  // SCREENUTILS_H

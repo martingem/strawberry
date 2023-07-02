@@ -86,7 +86,6 @@ class ContextView : public QWidget {
  private slots:
   void ActionShowAlbum();
   void ActionShowData();
-  void ActionShowOutput();
   void ActionShowLyrics();
   void ActionSearchLyrics();
   void UpdateNoSong();
@@ -112,7 +111,6 @@ class ContextView : public QWidget {
   QMenu *menu_options_;
   QAction *action_show_album_;
   QAction *action_show_data_;
-  QAction *action_show_output_;
   QAction *action_show_lyrics_;
   QAction *action_search_lyrics_;
 
@@ -129,12 +127,9 @@ class ContextView : public QWidget {
   QVBoxLayout *layout_play_;
   QLabel *label_stop_summary_;
   QWidget *widget_play_data_;
-  QWidget *widget_play_output_;
   QGridLayout *layout_play_data_;
-  QGridLayout *layout_play_output_;
   ResizableTextEdit *textedit_play_lyrics_;
 
-  QSpacerItem *spacer_play_output_;
   QSpacerItem *spacer_play_data_;
 
   QLabel *label_filetype_title_;
@@ -149,15 +144,6 @@ class ContextView : public QWidget {
   QLabel *label_bitdepth_;
   QLabel *label_bitrate_;
 
-  QLabel *label_device_title_;
-  QLabel *label_engine_title_;
-  QLabel *label_device_space_;
-  QLabel *label_engine_space_;
-  QLabel *label_device_;
-  QLabel *label_engine_;
-  QLabel *label_device_icon_;
-  QLabel *label_engine_icon_;
-
   Song song_playing_;
   Song song_prev_;
   QImage image_original_;
@@ -166,10 +152,9 @@ class ContextView : public QWidget {
   QString lyrics_;
   QString title_fmt_;
   QString summary_fmt_;
-  QString font_headline_;
-  QString font_normal_;
-  qreal font_size_headline_;
-  qreal font_size_normal_;
+  QFont font_headline_;
+  QFont font_normal_;
+  QFont font_nosong_;
 
   QList<QLabel*> labels_play_;
   QList<ResizableTextEdit*> textedit_play_;

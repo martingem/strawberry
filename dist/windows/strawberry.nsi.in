@@ -439,6 +439,7 @@ Section "Strawberry" Strawberry
   File "gsttag-1.0-0.dll"
   File "gsturidownloader-1.0-0.dll"
   File "gstvideo-1.0-0.dll"
+  File "gstwinrt-1.0-0.dll"
   File "harfbuzz.dll"
   File "intl-8.dll"
   File "jpeg62.dll"
@@ -488,11 +489,17 @@ Section "Strawberry" Strawberry
   File "zlibd.dll"
 !endif
 
+  ; Used by libfftw3-3.dll because fftw is compiled with MinGW.
+!ifdef arch_x86
+  File "libgcc_s_sjlj-1.dll"
+  File "libwinpthread-1.dll"
+!endif
+
 !endif ; MSVC
 
   ; Common files
 
-  File "icudt72.dll"
+  File "icudt73.dll"
   File "libfftw3-3.dll"
 !ifdef debug
   File "libprotobufd.dll"
@@ -500,8 +507,8 @@ Section "Strawberry" Strawberry
   File "libprotobuf.dll"
 !endif
 !ifdef msvc && debug
-  File "icuin72d.dll"
-  File "icuuc72d.dll"
+  File "icuin73d.dll"
+  File "icuuc73d.dll"
   File "Qt6Concurrentd.dll"
   File "Qt6Cored.dll"
   File "Qt6Guid.dll"
@@ -509,8 +516,8 @@ Section "Strawberry" Strawberry
   File "Qt6Sqld.dll"
   File "Qt6Widgetsd.dll"
 !else
-  File "icuin72.dll"
-  File "icuuc72.dll"
+  File "icuin73.dll"
+  File "icuuc73.dll"
   File "Qt6Concurrent.dll"
   File "Qt6Core.dll"
   File "Qt6Gui.dll"
@@ -733,6 +740,7 @@ Section "Gstreamer plugins" gstreamer-plugins
   File "/oname=gstvolume.dll" "gstreamer-plugins\gstvolume.dll"
   File "/oname=gstvorbis.dll" "gstreamer-plugins\gstvorbis.dll"
   File "/oname=gstwasapi.dll" "gstreamer-plugins\gstwasapi.dll"
+  File "/oname=gstwasapi2.dll" "gstreamer-plugins\gstwasapi2.dll"
   File "/oname=gstwavenc.dll" "gstreamer-plugins\gstwavenc.dll"
   File "/oname=gstwavpack.dll" "gstreamer-plugins\gstwavpack.dll"
   File "/oname=gstwavparse.dll" "gstreamer-plugins\gstwavparse.dll"
@@ -986,6 +994,7 @@ Section "Uninstall"
   Delete "$INSTDIR\gsttag-1.0-0.dll"
   Delete "$INSTDIR\gsturidownloader-1.0-0.dll"
   Delete "$INSTDIR\gstvideo-1.0-0.dll"
+  Delete "$INSTDIR\gstwinrt-1.0-0.dll"
   Delete "$INSTDIR\harfbuzz.dll"
   Delete "$INSTDIR\intl-8.dll"
   Delete "$INSTDIR\jpeg62.dll"
@@ -1035,11 +1044,16 @@ Section "Uninstall"
   Delete "$INSTDIR\zlibd.dll"
 !endif
 
+!ifdef arch_x86
+  Delete "$INSTDIR\libgcc_s_sjlj-1.dll"
+  Delete "$INSTDIR\libwinpthread-1.dll"
+!endif
+
 !endif ; MSVC
 
   ; Common files
 
-  Delete "$INSTDIR\icudt72.dll"
+  Delete "$INSTDIR\icudt73.dll"
   Delete "$INSTDIR\libfftw3-3.dll"
 !ifdef debug
   Delete "$INSTDIR\libprotobufd.dll"
@@ -1047,8 +1061,8 @@ Section "Uninstall"
   Delete "$INSTDIR\libprotobuf.dll"
 !endif
 !ifdef msvc && debug
-  Delete "$INSTDIR\icuin72d.dll"
-  Delete "$INSTDIR\icuuc72d.dll"
+  Delete "$INSTDIR\icuin73d.dll"
+  Delete "$INSTDIR\icuuc73d.dll"
   Delete "$INSTDIR\Qt6Concurrentd.dll"
   Delete "$INSTDIR\Qt6Cored.dll"
   Delete "$INSTDIR\Qt6Guid.dll"
@@ -1056,8 +1070,8 @@ Section "Uninstall"
   Delete "$INSTDIR\Qt6Sqld.dll"
   Delete "$INSTDIR\Qt6Widgetsd.dll"
 !else
-  Delete "$INSTDIR\icuin72.dll"
-  Delete "$INSTDIR\icuuc72.dll"
+  Delete "$INSTDIR\icuin73.dll"
+  Delete "$INSTDIR\icuuc73.dll"
   Delete "$INSTDIR\Qt6Concurrent.dll"
   Delete "$INSTDIR\Qt6Core.dll"
   Delete "$INSTDIR\Qt6Gui.dll"
@@ -1215,6 +1229,7 @@ Section "Uninstall"
   Delete "$INSTDIR\gstreamer-plugins\gstvolume.dll"
   Delete "$INSTDIR\gstreamer-plugins\gstvorbis.dll"
   Delete "$INSTDIR\gstreamer-plugins\gstwasapi.dll"
+  Delete "$INSTDIR\gstreamer-plugins\gstwasapi2.dll"
   Delete "$INSTDIR\gstreamer-plugins\gstwavenc.dll"
   Delete "$INSTDIR\gstreamer-plugins\gstwavpack.dll"
   Delete "$INSTDIR\gstreamer-plugins\gstwavparse.dll"
