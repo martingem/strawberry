@@ -2,105 +2,23 @@ name: Build
 on: [push,workflow_dispatch]
 
 jobs:
-  build_debian:
-    name: Build Debian
+  build-ubuntu:
+    name: Build Ubuntu
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        debian_version: [ 'sid' ]
-    container:
-      image: debian:${{matrix.debian_version}}
-    steps:
-    - name: Update repositories
-      run: apt update
-    - name: Install packages
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: >
-          apt install -y
-          build-essential
-          dh-make
-          ssh
-          git
-          make
-          cmake
-          gcc
-          g++
-          pkg-config
-          fakeroot
-          gettext
-          lsb-release
-          libglib2.0-dev
-          dpkg-dev
-          libdbus-1-dev
-          libboost-dev
-          libprotobuf-dev
-          protobuf-compiler
-          libsqlite3-dev
-          libgnutls28-dev
-          libasound2-dev
-          libpulse-dev
-          libtag1-dev
-          libicu-dev
-          libgstreamer1.0-dev
-          libgstreamer-plugins-base1.0-dev
-          gstreamer1.0-alsa
-          gstreamer1.0-pulseaudio
-          libchromaprint-dev
-          libfftw3-dev
-          libcdio-dev
-          libmtp-dev
-          libgpod-dev
-    - name: Install Qt 5
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: >
-          apt install -y
-          qtbase5-dev
-          qtbase5-dev-tools
-          qttools5-dev
-          qttools5-dev-tools
-          libqt5x11extras5-dev
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Add safe git directory
-      shell: bash
-      run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
-    - name: Create Build Environment
-      shell: bash
-      run: cmake -E make_directory build
-    - name: Configure CMake
-      shell: bash
-      working-directory: build
-      run: cmake .. -DBUILD_WITH_QT5=ON
-    - name: make deb
-      shell: bash
-      run: dpkg-buildpackage -b -d -uc -us -nc -j2
-    - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v3.1.1
-      with:
-        # A file, directory or wildcard pattern that describes what to upload
-        path: /__w/strawberry/*.deb
-        name: release
-        
-  build_popos:
-    name: Build PopOS
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # 'bionic', 'focal', 'jammy', 'kinetic'
         ubuntu_version: [ 'jammy' ]
     container:
       image: ubuntu:${{matrix.ubuntu_version}}
     steps:
+      - name: Update repositories
+        run: apt update -y
       - name: Install packages
         env:
           DEBIAN_FRONTEND: noninteractive
         run: >
-            apt-get update && apt-get install -y
+            apt install -y
             build-essential
             dh-make
             ssh
@@ -141,8 +59,9 @@ jobs:
       - name: Install Qt 5
         env:
           DEBIAN_FRONTEND: noninteractive
-        run: apt-get update && apt-get install -y qtbase5-dev qtbase5-dev-tools qttools5-dev qttools5-dev-tools libqt5x11extras5-dev
-      - uses: actions/checkout@v3
+        run: apt install -y qtbase5-dev qtbase5-dev-tools qttools5-dev qttools5-dev-tools libqt5x11extras5-dev
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Add safe git directory
@@ -150,13 +69,27 @@ jobs:
       - name: Create Build Environment
         run: cmake -E make_directory build
       - name: Configure CMake
-        working-directory: build
-        run: cmake .. -DBUILD_WITH_QT5=ON
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_WERROR=ON
       - name: make deb
         run: dpkg-buildpackage -b -d -uc -us -nc -j2
-      - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v3.1.1
+      - name: Copy deb
+        run: cp ../*.deb ../*.ddeb .
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
         with:
-          # A file, directory or wildcard pattern that describes what to upload
-          path: /__w/strawberry/*.deb
-          name: release
+          name: ubuntu-${{matrix.ubuntu_version}}
+          path: |
+            *.deb
+            *.ddeb
+      - name: SSH key setup
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci'
+        uses: shimataro/ssh-key-action@v2
+        with:
+          known_hosts: ${{secrets.SSH_KNOWN_HOSTS}}
+          key: ${{ secrets.SSH_KEY }}
+      - name: Create server path
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci'
+        run: ssh -p ${{secrets.SSH_PORT}} -o StrictHostKeyChecking=no ${{secrets.SSH_USER}}@${{secrets.SSH_HOST}} mkdir -p ${{secrets.BUILDS_PATH}}/ubuntu/${{matrix.ubuntu_version}}
+      - name: rsync
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci'
+        run: rsync -e "ssh -p ${{secrets.SSH_PORT}} -o StrictHostKeyChecking=no" -var *.deb *.ddeb ${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}:${{secrets.BUILDS_PATH}}/ubuntu/${{matrix.ubuntu_version}}/
