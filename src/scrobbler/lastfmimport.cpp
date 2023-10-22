@@ -38,8 +38,9 @@
 #include <QJsonArray>
 #include <QJsonValue>
 
-#include "core/networkaccessmanager.h"
 #include "core/logging.h"
+#include "core/shared_ptr.h"
+#include "core/networkaccessmanager.h"
 
 #include "lastfmimport.h"
 
@@ -48,7 +49,7 @@
 
 const int LastFMImport::kRequestsDelay = 2000;
 
-LastFMImport::LastFMImport(NetworkAccessManager *network, QObject *parent)
+LastFMImport::LastFMImport(SharedPtr<NetworkAccessManager> network, QObject *parent)
     : QObject(parent),
       network_(network),
       timer_flush_requests_(new QTimer(this)),
@@ -149,11 +150,10 @@ QByteArray LastFMImport::GetReplyData(QNetworkReply *reply) {
       data = reply->readAll();
       QJsonParseError json_error;
       QJsonDocument json_doc = QJsonDocument::fromJson(data, &json_error);
-      int error_code = -1;
       if (json_error.error == QJsonParseError::NoError && !json_doc.isEmpty() && json_doc.isObject()) {
         QJsonObject json_obj = json_doc.object();
         if (json_obj.contains("error") && json_obj.contains("message")) {
-          error_code = json_obj["error"].toInt();
+          int error_code = json_obj["error"].toInt();
           QString error_message = json_obj["message"].toString();
           error = QString("%1 (%2)").arg(error_message).arg(error_code);
         }

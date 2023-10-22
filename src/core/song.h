@@ -24,6 +24,8 @@
 
 #include "config.h"
 
+#include <optional>
+
 #include <QtGlobal>
 #include <QSharedData>
 #include <QSharedDataPointer>
@@ -113,6 +115,8 @@ class Song {
   static const QString kColumnSpec;
   static const QString kBindSpec;
   static const QString kUpdateSpec;
+
+  static const QStringList kNumericalColumns;
 
   static const QStringList kFtsColumns;
   static const QString kFtsColumnSpec;
@@ -211,6 +215,9 @@ class Song {
   const QString &musicbrainz_release_group_id() const;
   const QString &musicbrainz_work_id() const;
 
+  std::optional<double> ebur128_integrated_loudness_lufs() const;
+  std::optional<double> ebur128_loudness_range_lu() const;
+
   bool init_from_file() const;
 
   const QString &title_sortable() const;
@@ -296,6 +303,9 @@ class Song {
   void set_musicbrainz_release_group_id(const QString &v);
   void set_musicbrainz_work_id(const QString &v);
 
+  void set_ebur128_integrated_loudness_lufs(const std::optional<double> v);
+  void set_ebur128_loudness_range_lu(const std::optional<double> v);
+
   void set_stream_url(const QUrl &v);
 
   const QUrl &effective_stream_url() const;
@@ -349,6 +359,12 @@ class Song {
 
   QString SampleRateBitDepthToText() const;
 
+  static QString Ebur128LoudnessLUFSToText(const std::optional<double> v);
+  QString Ebur128LoudnessLUFSToText() const;
+
+  static QString Ebur128LoudnessRangeLUToText(const std::optional<double> v);
+  QString Ebur128LoudnessRangeLUToText() const;
+
   QString PrettyRating() const;
 
   bool IsEditable() const;
@@ -360,6 +376,7 @@ class Song {
   bool IsFingerprintEqual(const Song &other) const;
   bool IsAcoustIdEqual(const Song &other) const;
   bool IsMusicBrainzEqual(const Song &other) const;
+  bool IsEBUR128Equal(const Song &other) const;
   bool IsArtEqual(const Song &other) const;
   bool IsAllMetadataEqual(const Song &other) const;
 

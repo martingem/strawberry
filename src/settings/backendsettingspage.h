@@ -26,6 +26,7 @@
 #include <QVariant>
 #include <QString>
 
+#include "core/shared_ptr.h"
 #include "core/application.h"
 #include "core/player.h"
 #include "engine/enginebase.h"
@@ -51,7 +52,7 @@ class BackendSettingsPage : public SettingsPage {
   void Save() override;
   void Cancel() override;
 
-  EngineBase *engine() const { return dialog()->app()->player()->engine(); }
+  SharedPtr<EngineBase> engine() const { return dialog()->app()->player()->engine(); }
 
 #ifdef HAVE_ALSA
   enum class ALSAPluginType {
@@ -68,6 +69,9 @@ class BackendSettingsPage : public SettingsPage {
   void DeviceStringChanged();
   void RgPreampChanged(const int value);
   void RgFallbackGainChanged(const int value);
+#ifdef HAVE_GSTREAMER
+  void EbuR128TargetLevelChanged(const int value);
+#endif
   void radiobutton_alsa_hw_clicked(const bool checked);
   void radiobutton_alsa_plughw_clicked(const bool checked);
   void radiobutton_alsa_pcm_clicked(const bool checked);
@@ -98,7 +102,6 @@ class BackendSettingsPage : public SettingsPage {
   EngineBase::Type enginetype_current_;
   QString output_current_;
   QVariant device_current_;
-
 };
 
 #endif  // BACKENDSETTINGSPAGE_H

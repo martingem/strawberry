@@ -25,6 +25,7 @@
 #include "config.h"
 
 #include <optional>
+#include <memory>
 
 #include <QtGlobal>
 #include <QObject>
@@ -34,10 +35,9 @@
 #include <QStringList>
 #include <QUrl>
 #include <QSqlDatabase>
-#include <QSqlQuery>
 
+#include "core/shared_ptr.h"
 #include "core/song.h"
-#include "core/sqlquery.h"
 #include "collectionfilteroptions.h"
 #include "collectionquery.h"
 #include "collectiondirectory.h"
@@ -84,7 +84,7 @@ class CollectionBackendInterface : public QObject {
 
   virtual Song::Source source() const = 0;
 
-  virtual Database *db() const = 0;
+  virtual SharedPtr<Database> db() const = 0;
 
   // Get a list of directories in the collection.  Emits DirectoriesDiscovered.
   virtual void LoadDirectoriesAsync() = 0;
@@ -95,6 +95,7 @@ class CollectionBackendInterface : public QObject {
 
   virtual SongList FindSongsInDirectory(const int id) = 0;
   virtual SongList SongsWithMissingFingerprint(const int id) = 0;
+  virtual SongList SongsWithMissingLoudnessCharacteristics(const int id) = 0;
   virtual CollectionSubdirectoryList SubdirsInDirectory(const int id) = 0;
   virtual CollectionDirectoryList GetAllDirectories() = 0;
   virtual void ChangeDirPath(const int id, const QString &old_path, const QString &new_path) = 0;
@@ -141,7 +142,9 @@ class CollectionBackend : public CollectionBackendInterface {
 
   Q_INVOKABLE explicit CollectionBackend(QObject *parent = nullptr);
 
-  void Init(Database *db, TaskManager *task_manager, const Song::Source source, const QString &songs_table, const QString &fts_table, const QString &dirs_table = QString(), const QString &subdirs_table = QString());
+  ~CollectionBackend();
+
+  void Init(SharedPtr<Database> db, SharedPtr<TaskManager> task_manager, const Song::Source source, const QString &songs_table, const QString &fts_table, const QString &dirs_table = QString(), const QString &subdirs_table = QString());
   void Close();
 
   void ExitAsync();
@@ -150,7 +153,7 @@ class CollectionBackend : public CollectionBackendInterface {
 
   Song::Source source() const override { return source_; }
 
-  Database *db() const override { return db_; }
+  SharedPtr<Database> db() const override { return db_; }
 
   QString songs_table() const override { return songs_table_; }
   QString fts_table() const override { return fts_table_; }
@@ -166,6 +169,7 @@ class CollectionBackend : public CollectionBackendInterface {
 
   SongList FindSongsInDirectory(const int id) override;
   SongList SongsWithMissingFingerprint(const int id) override;
+  SongList SongsWithMissingLoudnessCharacteristics(const int id) override;
   CollectionSubdirectoryList SubdirsInDirectory(const int id) override;
   CollectionDirectoryList GetAllDirectories() override;
   void ChangeDirPath(const int id, const QString &old_path, const QString &new_path) override;
@@ -305,8 +309,8 @@ class CollectionBackend : public CollectionBackendInterface {
   SongList GetSongsBySongId(const QStringList &song_ids, QSqlDatabase &db);
 
  private:
-  Database *db_;
-  TaskManager *task_manager_;
+  SharedPtr<Database> db_;
+  SharedPtr<TaskManager> task_manager_;
   Song::Source source_;
   QString songs_table_;
   QString dirs_table_;

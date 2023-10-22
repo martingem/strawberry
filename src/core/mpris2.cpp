@@ -118,40 +118,39 @@ Mpris2::Mpris2(Application *app, QObject *parent)
     return;
   }
 
-  QObject::connect(app_->current_albumcover_loader(), &CurrentAlbumCoverLoader::AlbumCoverLoaded, this, &Mpris2::AlbumCoverLoaded);
+  QObject::connect(&*app_->current_albumcover_loader(), &CurrentAlbumCoverLoader::AlbumCoverLoaded, this, &Mpris2::AlbumCoverLoaded);
 
-  QObject::connect(app_->player()->engine(), &EngineBase::StateChanged, this, &Mpris2::EngineStateChanged);
-  QObject::connect(app_->player(), &Player::VolumeChanged, this, &Mpris2::VolumeChanged);
-  QObject::connect(app_->player(), &Player::Seeked, this, &Mpris2::Seeked);
+  QObject::connect(&*app_->player()->engine(), &EngineBase::StateChanged, this, &Mpris2::EngineStateChanged);
+  QObject::connect(&*app_->player(), &Player::VolumeChanged, this, &Mpris2::VolumeChanged);
+  QObject::connect(&*app_->player(), &Player::Seeked, this, &Mpris2::Seeked);
 
-  QObject::connect(app_->playlist_manager(), &PlaylistManager::PlaylistManagerInitialized, this, &Mpris2::PlaylistManagerInitialized);
-  QObject::connect(app_->playlist_manager(), &PlaylistManager::CurrentSongChanged, this, &Mpris2::CurrentSongChanged);
-  QObject::connect(app_->playlist_manager(), &PlaylistManager::PlaylistChanged, this, &Mpris2::PlaylistChangedSlot);
-  QObject::connect(app_->playlist_manager(), &PlaylistManager::CurrentChanged, this, &Mpris2::PlaylistCollectionChanged);
+  QObject::connect(&*app_->playlist_manager(), &PlaylistManager::PlaylistManagerInitialized, this, &Mpris2::PlaylistManagerInitialized);
+  QObject::connect(&*app_->playlist_manager(), &PlaylistManager::CurrentSongChanged, this, &Mpris2::CurrentSongChanged);
+  QObject::connect(&*app_->playlist_manager(), &PlaylistManager::PlaylistChanged, this, &Mpris2::PlaylistChangedSlot);
+  QObject::connect(&*app_->playlist_manager(), &PlaylistManager::CurrentChanged, this, &Mpris2::PlaylistCollectionChanged);
 
   app_name_[0] = app_name_[0].toUpper();
 
-  if (!QGuiApplication::desktopFileName().isEmpty()) {
-    desktop_files_ << QGuiApplication::desktopFileName();
+  QStringList data_dirs = QString(qgetenv("XDG_DATA_DIRS")).split(":");
+
+  if (!data_dirs.contains("/usr/local/share")) {
+    data_dirs.append("/usr/local/share");
   }
 
-  QStringList domain_split = QCoreApplication::organizationDomain().split(".");
-  std::reverse(domain_split.begin(), domain_split.end());
-  desktop_files_ << QStringList() << domain_split.join(".") + "." + QCoreApplication::applicationName().toLower();
-  desktop_files_ << QCoreApplication::applicationName().toLower();
-  desktop_file_ = desktop_files_.first();
+  if (!data_dirs.contains("/usr/share")) {
+    data_dirs.append("/usr/share");
+  }
 
-  data_dirs_ = QString(qgetenv("XDG_DATA_DIRS")).split(":");
-  data_dirs_.append("/usr/local/share");
-  data_dirs_.append("/usr/share");
-
-  for (const QString &directory : data_dirs_) {
-    for (const QString &desktop_file : desktop_files_) {
-      QString path = QString("%1/applications/%2.desktop").arg(directory, desktop_file);
-      if (QFile::exists(path)) {
-        desktop_file_ = desktop_file;
-      }
+  for (const QString &data_dir : data_dirs) {
+    const QString desktopfilepath = QString("%1/applications/%2.desktop").arg(data_dir, QGuiApplication::desktopFileName());
+    if (QFile::exists(desktopfilepath)) {
+      desktopfilepath_ = desktopfilepath;
+      break;
     }
+  }
+
+  if (desktopfilepath_.isEmpty()) {
+    desktopfilepath_ = QGuiApplication::desktopFileName() + ".desktop";
   }
 
 }
@@ -212,6 +211,7 @@ void Mpris2::EmitNotification(const QString &name) {
   else if (name == "LoopStatus") value = LoopStatus();
   else if (name == "Shuffle") value = Shuffle();
   else if (name == "Metadata") value = Metadata();
+  else if (name == "Rating") value = Rating();
   else if (name == "Volume") value = Volume();
   else if (name == "Position") value = Position();
   else if (name == "CanPlay") value = CanPlay();
@@ -236,19 +236,11 @@ QString Mpris2::Identity() const { return app_name_; }
 
 QString Mpris2::DesktopEntryAbsolutePath() const {
 
-  for (const QString &directory : data_dirs_) {
-    for (const QString &desktop_file : desktop_files_) {
-      QString path = QString("%1/applications/%2.desktop").arg(directory, desktop_file);
-      if (QFile::exists(path)) {
-        return path;
-      }
-    }
-  }
-  return QString();
+  return desktopfilepath_;
 
 }
 
-QString Mpris2::DesktopEntry() const { return desktop_file_; }
+QString Mpris2::DesktopEntry() const { return QGuiApplication::desktopFileName() + ".desktop"; }
 
 QStringList Mpris2::SupportedUriSchemes() const {
 
@@ -368,6 +360,24 @@ void Mpris2::SetShuffle(bool enable) {
 }
 
 QVariantMap Mpris2::Metadata() const { return last_metadata_; }
+
+double Mpris2::Rating() const {
+  float rating = app_->playlist_manager()->active()->current_item_metadata().rating();
+  return (rating <= 0) ? 0 : rating;
+}
+
+void Mpris2::SetRating(double rating) {
+
+  if (rating > 1.0) {
+    rating = 1.0;
+  }
+  else if (rating <= 0.0) {
+    rating = -1.0;
+  }
+
+  app_->playlist_manager()->RateCurrentSong(static_cast<float>(rating));
+
+}
 
 QString Mpris2::current_track_id() const {
   return QString("/org/strawberrymusicplayer/strawberry/Track/%1").arg(QString::number(app_->playlist_manager()->active()->current_row()));

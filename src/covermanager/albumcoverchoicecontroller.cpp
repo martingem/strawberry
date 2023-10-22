@@ -55,7 +55,6 @@
 #include "utilities/filenameconstants.h"
 #include "utilities/strutils.h"
 #include "utilities/mimeutils.h"
-#include "utilities/imageutils.h"
 #include "utilities/coveroptions.h"
 #include "utilities/coverutils.h"
 #include "utilities/screenutils.h"
@@ -578,7 +577,7 @@ void AlbumCoverChoiceController::SaveArtManualToSong(Song *song, const QUrl &art
     case Song::Source::Tidal:
     case Song::Source::Qobuz:
     case Song::Source::Subsonic:
-      InternetService *service = app_->internet_services()->ServiceBySource(song->source());
+      InternetServicePtr service = app_->internet_services()->ServiceBySource(song->source());
       if (!service) break;
       if (service->artists_collection_backend()) {
         service->artists_collection_backend()->UpdateManualAlbumArtAsync(song->effective_albumartist(), song->album(), art_manual);
@@ -717,7 +716,7 @@ void AlbumCoverChoiceController::SaveCoverEmbeddedToCollectionSongs(const QStrin
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   QFuture<SongList> future = QtConcurrent::run(&CollectionBackend::GetAlbumSongs, app_->collection_backend(), effective_albumartist, effective_album, CollectionFilterOptions());
 #else
-  QFuture<SongList> future = QtConcurrent::run(app_->collection_backend(), &CollectionBackend::GetAlbumSongs, effective_albumartist, effective_album, CollectionFilterOptions());
+  QFuture<SongList> future = QtConcurrent::run(&*app_->collection_backend(), &CollectionBackend::GetAlbumSongs, effective_albumartist, effective_album, CollectionFilterOptions());
 #endif
   QFutureWatcher<SongList> *watcher = new QFutureWatcher<SongList>();
   QObject::connect(watcher, &QFutureWatcher<SongList>::finished, this, [this, watcher, cover_filename, image_data, mime_type]() {

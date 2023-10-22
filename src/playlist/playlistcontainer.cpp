@@ -46,6 +46,7 @@
 #include <QtEvents>
 #include <QSettings>
 
+#include "core/shared_ptr.h"
 #include "core/iconloader.h"
 #include "playlist.h"
 #include "playlisttabbar.h"
@@ -122,6 +123,38 @@ PlaylistContainer::PlaylistContainer(QWidget *parent)
   QObject::connect(ui_->playlist, &PlaylistView::FocusOnFilterSignal, this, &PlaylistContainer::FocusOnFilter);
   ui_->search_field->installEventFilter(this);
 
+  QString available_fields = PlaylistFilter().column_names().keys().join(", ");
+  ui_->search_field->setToolTip(
+    QString("<html><head/><body><p>") +
+    tr("Prefix a search term with a field name to limit the search to that field, e.g.:") +
+    QString(" ") +
+    QString("<span style=\"font-weight:600;\">") +
+    tr("artist") +
+    QString(":</span><span style=\"font-style:italic;\">Strawbs</span> ") +
+    tr("searches the playlist for all artists that contain the word %1. ").arg("Strawbs") +
+    QString("</p><p>") +
+
+    tr("Search terms for numerical fields can be prefixed with %1 or %2 to refine the search, e.g.: ")
+      .arg(" =, !=, &lt;, &gt;, &lt;=", "&gt;=") +
+    QString("<span style=\"font-weight:600;\">") +
+    tr("rating") +
+    QString("</span>") +
+    QString(":>=") +
+    QString("<span style=\"font-weight:italic;\">4</span>") +
+    QString("</p><p>") +
+
+    tr("Multiple search terms can also be combined with \"%1\" (default) and \"%2\", as well as grouped with parentheses. ")
+      .arg("AND", "OR") +
+
+    QString("</p><p><span style=\"font-weight:600;\">") +
+    tr("Available fields") +
+    QString(": ") + QString("</span><span style=\"font-style:italic;\">") +
+    available_fields +
+    QString("</span>.") +
+    QString("</p></body></html>")
+  );
+
+
   ReloadSettings();
 
 }
@@ -146,27 +179,27 @@ void PlaylistContainer::SetActions(QAction *new_playlist, QAction *load_playlist
   QObject::connect(next_playlist, &QAction::triggered, this, &PlaylistContainer::GoToNextPlaylistTab);
   QObject::connect(previous_playlist, &QAction::triggered, this, &PlaylistContainer::GoToPreviousPlaylistTab);
   QObject::connect(clear_playlist, &QAction::triggered, this, &PlaylistContainer::ClearPlaylist);
-  QObject::connect(save_all_playlists, &QAction::triggered, manager_, &PlaylistManager::SaveAllPlaylists);
+  QObject::connect(save_all_playlists, &QAction::triggered, &*manager_, &PlaylistManager::SaveAllPlaylists);
 
 }
 
-void PlaylistContainer::SetManager(PlaylistManager *manager) {
+void PlaylistContainer::SetManager(SharedPtr<PlaylistManager> manager) {
 
   manager_ = manager;
   ui_->tab_bar->SetManager(manager);
 
-  QObject::connect(ui_->tab_bar, &PlaylistTabBar::CurrentIdChanged, manager, &PlaylistManager::SetCurrentPlaylist);
-  QObject::connect(ui_->tab_bar, &PlaylistTabBar::Rename, manager, &PlaylistManager::Rename);
-  QObject::connect(ui_->tab_bar, &PlaylistTabBar::Close, manager, &PlaylistManager::Close);
-  QObject::connect(ui_->tab_bar, &PlaylistTabBar::PlaylistFavorited, manager, &PlaylistManager::Favorite);
+  QObject::connect(ui_->tab_bar, &PlaylistTabBar::CurrentIdChanged, &*manager, &PlaylistManager::SetCurrentPlaylist);
+  QObject::connect(ui_->tab_bar, &PlaylistTabBar::Rename, &*manager, &PlaylistManager::Rename);
+  QObject::connect(ui_->tab_bar, &PlaylistTabBar::Close, &*manager, &PlaylistManager::Close);
+  QObject::connect(ui_->tab_bar, &PlaylistTabBar::PlaylistFavorited, &*manager, &PlaylistManager::Favorite);
 
-  QObject::connect(ui_->tab_bar, &PlaylistTabBar::PlaylistOrderChanged, manager, &PlaylistManager::ChangePlaylistOrder);
+  QObject::connect(ui_->tab_bar, &PlaylistTabBar::PlaylistOrderChanged, &*manager, &PlaylistManager::ChangePlaylistOrder);
 
-  QObject::connect(manager, &PlaylistManager::CurrentChanged, this, &PlaylistContainer::SetViewModel);
-  QObject::connect(manager, &PlaylistManager::PlaylistAdded, this, &PlaylistContainer::PlaylistAdded);
-  QObject::connect(manager, &PlaylistManager::PlaylistManagerInitialized, this, &PlaylistContainer::Started);
-  QObject::connect(manager, &PlaylistManager::PlaylistClosed, this, &PlaylistContainer::PlaylistClosed);
-  QObject::connect(manager, &PlaylistManager::PlaylistRenamed, this, &PlaylistContainer::PlaylistRenamed);
+  QObject::connect(&*manager, &PlaylistManager::CurrentChanged, this, &PlaylistContainer::SetViewModel);
+  QObject::connect(&*manager, &PlaylistManager::PlaylistAdded, this, &PlaylistContainer::PlaylistAdded);
+  QObject::connect(&*manager, &PlaylistManager::PlaylistManagerInitialized, this, &PlaylistContainer::Started);
+  QObject::connect(&*manager, &PlaylistManager::PlaylistClosed, this, &PlaylistContainer::PlaylistClosed);
+  QObject::connect(&*manager, &PlaylistManager::PlaylistRenamed, this, &PlaylistContainer::PlaylistRenamed);
 
 }
 

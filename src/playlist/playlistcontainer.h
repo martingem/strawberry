@@ -44,6 +44,8 @@ class PlaylistView;
 
 class Ui_PlaylistContainer;
 
+#include "core/shared_ptr.h"
+
 class PlaylistContainer : public QWidget {
   Q_OBJECT
 
@@ -54,7 +56,7 @@ class PlaylistContainer : public QWidget {
   static const char *kSettingsGroup;
 
   void SetActions(QAction *new_playlist, QAction *load_playlist, QAction *save_playlist, QAction *clear_playlist, QAction *next_playlist, QAction *previous_playlist, QAction *save_all_playlists);
-  void SetManager(PlaylistManager *manager);
+  void SetManager(SharedPtr<PlaylistManager> manager);
   void ReloadSettings();
 
   bool SearchFieldHasFocus() const;
@@ -65,9 +67,6 @@ class PlaylistContainer : public QWidget {
   bool eventFilter(QObject *objectWatched, QEvent *event) override;
 
  signals:
-  void TabChanged(const int id);
-  void Rename(const int id, const QString &new_name);
-
   void UndoRedoActionsChanged(QAction *undo, QAction *redo);
   void ViewSelectionModelChanged();
 
@@ -118,7 +117,7 @@ class PlaylistContainer : public QWidget {
 
   Ui_PlaylistContainer *ui_;
 
-  PlaylistManager *manager_;
+  SharedPtr<PlaylistManager> manager_;
   QAction *undo_;
   QAction *redo_;
   Playlist *playlist_;

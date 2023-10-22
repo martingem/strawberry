@@ -32,14 +32,13 @@ class RadioParadiseService : public RadioService {
   Q_OBJECT
 
  public:
-  explicit RadioParadiseService(Application *app, NetworkAccessManager *network, QObject *parent = nullptr);
+  explicit RadioParadiseService(Application *app, SharedPtr<NetworkAccessManager> network, QObject *parent = nullptr);
 
   QUrl Homepage() override;
   QUrl Donate() override;
 
  public slots:
   void GetChannels() override;
-
 };
 
 #endif  // RADIOPARADISESERVICE_H

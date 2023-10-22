@@ -117,6 +117,9 @@ class Mpris2 : public QObject {
   Q_PROPERTY(QStringList Orderings READ Orderings)
   Q_PROPERTY(MaybePlaylist ActivePlaylist READ ActivePlaylist)
 
+  // strawberry specific additional property to extend MPRIS Player interface
+  Q_PROPERTY(double Rating READ Rating WRITE SetRating)
+
   // Root Properties
   bool CanQuit() const;
   bool CanRaise() const;
@@ -144,6 +147,8 @@ class Mpris2 : public QObject {
   bool Shuffle() const;
   void SetShuffle(bool enable);
   QVariantMap Metadata() const;
+  double Rating() const;
+  void SetRating(double rating);
   double Volume() const;
   void SetVolume(const double volume);
   qint64 Position() const;
@@ -234,9 +239,7 @@ class Mpris2 : public QObject {
   Application *app_;
 
   QString app_name_;
-  QStringList data_dirs_;
-  QStringList desktop_files_;
-  QString desktop_file_;
+  QString desktopfilepath_;
   QVariantMap last_metadata_;
 
 };

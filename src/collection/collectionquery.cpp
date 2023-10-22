@@ -32,13 +32,11 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 
-#include "core/logging.h"
-#include "core/sqlquery.h"
 #include "core/song.h"
 
 #include "collectionquery.h"
 #include "collectionfilteroptions.h"
-#include "collectionqueryoptions.h"
+#include "utilities/searchparserutils.h"
 
 CollectionQuery::CollectionQuery(const QSqlDatabase &db, const QString &songs_table, const QString &fts_table, const CollectionFilterOptions &filter_options)
     : QSqlQuery(db),
@@ -56,36 +54,48 @@ CollectionQuery::CollectionQuery(const QSqlDatabase &db, const QString &songs_ta
     //  3) Remove colons which don't correspond to column names.
 
     // Split on whitespace
+    QString filter_text = filter_options.filter_text().replace(QRegularExpression(":\\s+"), ":");
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
-    QStringList tokens(filter_options.filter_text().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts));
+    QStringList tokens(filter_text.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts));
 #else
-    QStringList tokens(filter_options.filter_text().split(QRegularExpression("\\s+"), QString::SkipEmptyParts));
+    QStringList tokens(filter_text.split(QRegularExpression("\\s+"), QString::SkipEmptyParts));
 #endif
     QString query;
     for (QString token : tokens) {
-      token.remove('(');
-      token.remove(')');
-      token.remove('"');
-      token.replace('-', ' ');
+      token.remove('(')
+           .remove(')')
+           .remove('"')
+           .replace('-', ' ');
 
       if (token.contains(':')) {
-        // Only prefix fts if the token is a valid column name.
-        if (Song::kFtsColumns.contains("fts" + token.section(':', 0, 0), Qt::CaseInsensitive)) {
-          // Account for multiple colons.
-          QString columntoken = token.section(':', 0, 0, QString::SectionIncludeTrailingSep);
-          QString subtoken = token.section(':', 1, -1);
-          subtoken.replace(":", " ");
-          subtoken = subtoken.trimmed();
-          if (!subtoken.isEmpty()) {
-            if (!query.isEmpty()) query.append(" ");
-            query += "fts" + columntoken + "\"" + subtoken + "\"*";
+        const QString columntoken = token.section(':', 0, 0);
+        QString subtoken = token.section(':', 1, -1).replace(":", " ").trimmed();
+        if (subtoken.isEmpty()) continue;
+        if (Song::kFtsColumns.contains("fts" + columntoken, Qt::CaseInsensitive)) {
+          if (!query.isEmpty()) query.append(" ");
+          query += "fts" + columntoken + ":\"" + subtoken + "\"*";
+        }
+        else if (Song::kNumericalColumns.contains(columntoken, Qt::CaseInsensitive)) {
+          QString comparator = RemoveSqlOperator(subtoken);
+          if (columntoken.compare("rating", Qt::CaseInsensitive) == 0) {
+            AddWhereRating(subtoken, comparator);
+          }
+          else if (columntoken.compare("length", Qt::CaseInsensitive) == 0) {
+            // Time is saved in nanoseconds, so add 9 0's
+            QString parsedTime = QString::number(Utilities::ParseSearchTime(subtoken)) + "000000000";
+            AddWhere(columntoken, parsedTime, comparator);
+          }
+          else {
+            AddWhere(columntoken, subtoken, comparator);
           }
         }
+        // Not a valid filter, remove
         else {
-          token.replace(":", " ");
-          token = token.trimmed();
-          if (!query.isEmpty()) query.append(" ");
-          query += "\"" + token + "\"*";
+          token = token.replace(":", " ").trimmed();
+          if (!token.isEmpty()) {
+            if (!query.isEmpty()) query.append(" ");
+            query += "\"" + token + "\"*";
+          }
         }
       }
       else {
@@ -118,6 +128,24 @@ CollectionQuery::CollectionQuery(const QSqlDatabase &db, const QString &songs_ta
   if (filter_options.filter_mode() == CollectionFilterOptions::FilterMode::Untagged) {
     where_clauses_ << "(artist = '' OR album = '' OR title ='')";
   }
+
+}
+
+QString CollectionQuery::RemoveSqlOperator(QString &token) {
+
+  QString op = "=";
+  static QRegularExpression rxOp("^(=|<[>=]?|>=?|!=)");
+  QRegularExpressionMatch match = rxOp.match(token);
+  if (match.hasMatch()) {
+    op = match.captured(0);
+  }
+  token.remove(rxOp);
+
+  if (op == "!=") {
+    op = "<>";
+  }
+
+  return op;
 
 }
 
@@ -170,6 +198,37 @@ void CollectionQuery::AddWhereArtist(const QVariant &value) {
 
 }
 
+void CollectionQuery::AddWhereRating(const QVariant &value, const QString &op) {
+
+  float parsed_rating = Utilities::ParseSearchRating(value.toString());
+
+  // You can't query the database for a float, due to float precision errors,
+  // So we have to use a certain tolerance, so that the searched value is definetly included.
+  const float tolerance = 0.001F;
+  if (op == "<") {
+    AddWhere("rating", parsed_rating-tolerance, "<");
+  }
+  else if (op == ">") {
+    AddWhere("rating", parsed_rating+tolerance, ">");
+  }
+  else if (op == "<=") {
+    AddWhere("rating", parsed_rating+tolerance, "<=");
+  }
+  else if (op == ">=") {
+    AddWhere("rating", parsed_rating-tolerance, ">=");
+  }
+  else if (op == "<>") {
+    where_clauses_ << QString("(rating<? OR rating>?)");
+    bound_values_ << parsed_rating - tolerance;
+    bound_values_ << parsed_rating + tolerance;
+  }
+  else /* (op == "=") */ {
+    AddWhere("rating", parsed_rating+tolerance, "<");
+    AddWhere("rating", parsed_rating-tolerance, ">");
+  }
+
+}
+
 void CollectionQuery::AddCompilationRequirement(const bool compilation) {
   // The unary + is added to prevent sqlite from using the index idx_comp_artist.
   // When joining with fts, sqlite 3.8 has a tendency to use this index and thereby nesting the tables in an order which gives very poor performance
@@ -213,7 +272,7 @@ bool CollectionQuery::Exec() {
   sql.replace("%fts_table_noprefix", fts_table_.section('.', -1, -1));
   sql.replace("%fts_table", fts_table_);
 
-  QSqlQuery::prepare(sql);
+  if (!QSqlQuery::prepare(sql)) return false;
 
   // Bind values
   for (const QVariant &value : bound_values_) {

@@ -35,6 +35,7 @@
 #include <QUrl>
 
 #include "collectiondirectory.h"
+#include "core/shared_ptr.h"
 #include "core/song.h"
 
 class QThread;
@@ -50,11 +51,12 @@ class CollectionWatcher : public QObject {
 
  public:
   explicit CollectionWatcher(Song::Source source, QObject *parent = nullptr);
+  ~CollectionWatcher();
 
   Song::Source source() { return source_; }
 
-  void set_backend(CollectionBackend *backend) { backend_ = backend; }
-  void set_task_manager(TaskManager *task_manager) { task_manager_ = task_manager; }
+  void set_backend(SharedPtr<CollectionBackend> backend) { backend_ = backend; }
+  void set_task_manager(SharedPtr<TaskManager> task_manager) { task_manager_ = task_manager; }
   void set_device_name(const QString &device_name) { device_name_ = device_name; }
 
   void IncrementalScanAsync();
@@ -102,6 +104,7 @@ class CollectionWatcher : public QObject {
 
     SongList FindSongsInSubdirectory(const QString &path);
     bool HasSongsWithMissingFingerprint(const QString &path);
+    bool HasSongsWithMissingLoudnessCharacteristics(const QString &path);
     bool HasSeenSubdir(const QString &path);
     void SetKnownSubdirs(const CollectionSubdirectoryList &subdirs);
     CollectionSubdirectoryList GetImmediateSubdirs(const QString &path);
@@ -156,6 +159,9 @@ class CollectionWatcher : public QObject {
     QMultiMap<QString, Song> cached_songs_missing_fingerprint_;
     bool cached_songs_missing_fingerprint_dirty_;
 
+    QMultiMap<QString, Song> cached_songs_missing_loudness_characteristics_;
+    bool cached_songs_missing_loudness_characteristics_dirty_;
+
     CollectionSubdirectoryList known_subdirs_;
     bool known_subdirs_dirty_;
   };
@@ -195,6 +201,8 @@ class CollectionWatcher : public QObject {
 
   static void AddChangedSong(const QString &file, const Song &matching_song, const Song &new_song, ScanTransaction *t);
 
+  void PerformEBUR128Analysis(Song &song) const;
+
   quint64 FilesCountForPath(ScanTransaction *t, const QString &path);
   quint64 FilesCountForSubdirs(ScanTransaction *t, const CollectionSubdirectoryList &subdirs, QMap<QString, quint64> &subdir_files_count);
 
@@ -202,8 +210,8 @@ class CollectionWatcher : public QObject {
 
  private:
   Song::Source source_;
-  CollectionBackend *backend_;
-  TaskManager *task_manager_;
+  SharedPtr<CollectionBackend> backend_;
+  SharedPtr<TaskManager> task_manager_;
   QString device_name_;
 
   FileSystemWatcherInterface *fs_watcher_;
@@ -217,6 +225,7 @@ class CollectionWatcher : public QObject {
   bool scan_on_startup_;
   bool monitor_;
   bool song_tracking_;
+  bool song_ebur128_loudness_analysis_;
   bool mark_songs_unavailable_;
   int expire_unavailable_songs_days_;
   bool overwrite_playcount_;
@@ -236,6 +245,7 @@ class CollectionWatcher : public QObject {
   CueParser *cue_parser_;
 
   static QStringList sValidImages;
+  static QStringList kIgnoredExtensions;
 
   qint64 last_scan_time_;
 

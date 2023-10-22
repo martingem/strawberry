@@ -21,6 +21,9 @@
 
 #include "config.h"
 
+#include <algorithm>
+#include <optional>
+
 #include <vlc/vlc.h>
 
 #include <QtGlobal>
@@ -29,6 +32,7 @@
 #include <QByteArray>
 #include <QUrl>
 
+#include "core/shared_ptr.h"
 #include "core/taskmanager.h"
 #include "core/logging.h"
 #include "utilities/timeconstants.h"
@@ -36,7 +40,7 @@
 #include "vlcengine.h"
 #include "vlcscopedref.h"
 
-VLCEngine::VLCEngine(TaskManager *task_manager, QObject *parent)
+VLCEngine::VLCEngine(SharedPtr<TaskManager> task_manager, QObject *parent)
     : EngineBase(parent),
       instance_(nullptr),
       player_(nullptr),
@@ -98,9 +102,12 @@ bool VLCEngine::Init() {
 
 }
 
-bool VLCEngine::Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec) {
+bool VLCEngine::Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs) {
+
+  // FIXME: why is this not calling `EngineBase::Load()`?
 
   Q_UNUSED(media_url);
+  Q_UNUSED(ebur128_integrated_loudness_lufs);
   Q_UNUSED(change);
   Q_UNUSED(force_stop_at_end);
   Q_UNUSED(beginning_nanosec);

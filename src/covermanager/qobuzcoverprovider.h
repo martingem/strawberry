@@ -30,19 +30,19 @@
 #include <QJsonObject>
 #include <QSslError>
 
+#include "core/shared_ptr.h"
 #include "jsoncoverprovider.h"
 #include "qobuz/qobuzservice.h"
 
 class QNetworkReply;
 class Application;
 class NetworkAccessManager;
-class QobuzService;
 
 class QobuzCoverProvider : public JsonCoverProvider {
   Q_OBJECT
 
  public:
-  explicit QobuzCoverProvider(Application *app, NetworkAccessManager *network, QObject *parent = nullptr);
+  explicit QobuzCoverProvider(Application *app, SharedPtr<NetworkAccessManager> network, QObject *parent = nullptr);
   ~QobuzCoverProvider() override;
 
   bool StartSearch(const QString &artist, const QString &album, const QString &title, const int id) override;
@@ -61,9 +61,8 @@ class QobuzCoverProvider : public JsonCoverProvider {
  private:
   static const int kLimit;
 
-  QobuzService *service_;
+  QobuzServicePtr service_;
   QList<QNetworkReply*> replies_;
-
 };
 
 #endif  // QOBUZCOVERPROVIDER_H

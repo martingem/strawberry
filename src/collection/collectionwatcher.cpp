@@ -55,8 +55,12 @@
 #include "collectionwatcher.h"
 #include "playlistparsers/cueparser.h"
 #include "settings/collectionsettingspage.h"
+#include "engine/ebur128measures.h"
 #ifdef HAVE_SONGFINGERPRINTING
 #  include "engine/chromaprinter.h"
+#endif
+#ifdef HAVE_EBUR128
+#  include "engine/ebur128analysis.h"
 #endif
 
 // This is defined by one of the windows headers that is included by taglib.
@@ -67,6 +71,7 @@
 using namespace std::chrono_literals;
 
 QStringList CollectionWatcher::sValidImages = QStringList() << "jpg" << "png" << "gif" << "jpeg";
+QStringList CollectionWatcher::kIgnoredExtensions = QStringList() << "tmp" << "tar" << "gz" << "bz2" << "xz" << "tbz" << "tgz" << "z" << "zip" << "rar";
 
 CollectionWatcher::CollectionWatcher(Song::Source source, QObject *parent)
     : QObject(parent),
@@ -78,6 +83,7 @@ CollectionWatcher::CollectionWatcher(Song::Source source, QObject *parent)
       scan_on_startup_(true),
       monitor_(true),
       song_tracking_(false),
+      song_ebur128_loudness_analysis_(false),
       mark_songs_unavailable_(source_ == Song::Source::Collection),
       expire_unavailable_songs_days_(60),
       overwrite_playcount_(false),
@@ -114,6 +120,12 @@ CollectionWatcher::CollectionWatcher(Song::Source source, QObject *parent)
 
 }
 
+CollectionWatcher::~CollectionWatcher() {
+
+  qLog(Debug) << "Collection watcher" << this << "for" << Song::TextForSource(source_) << "deleted.";
+
+}
+
 void CollectionWatcher::ExitAsync() {
   QMetaObject::invokeMethod(this, &CollectionWatcher::Exit, Qt::QueuedConnection);
 }
@@ -145,10 +157,12 @@ void CollectionWatcher::ReloadSettings() {
   QStringList filters = s.value("cover_art_patterns", QStringList() << "front" << "cover").toStringList();
   if (source_ == Song::Source::Collection) {
     song_tracking_ = s.value("song_tracking", false).toBool();
+    song_ebur128_loudness_analysis_ = s.value("song_ebur128_loudness_analysis", false).toBool();
     mark_songs_unavailable_ = song_tracking_ ? true : s.value("mark_songs_unavailable", true).toBool();
   }
   else {
     song_tracking_ = false;
+    song_ebur128_loudness_analysis_ = false;
     mark_songs_unavailable_ = false;
   }
   expire_unavailable_songs_days_ = s.value("expire_unavailable_songs", 60).toInt();
@@ -195,6 +209,7 @@ CollectionWatcher::ScanTransaction::ScanTransaction(CollectionWatcher *watcher, 
       watcher_(watcher),
       cached_songs_dirty_(true),
       cached_songs_missing_fingerprint_dirty_(true),
+      cached_songs_missing_loudness_characteristics_dirty_(true),
       known_subdirs_dirty_(true) {
 
   QString description;
@@ -329,6 +344,21 @@ bool CollectionWatcher::ScanTransaction::HasSongsWithMissingFingerprint(const QS
 
 }
 
+bool CollectionWatcher::ScanTransaction::HasSongsWithMissingLoudnessCharacteristics(const QString &path) {
+
+  if (cached_songs_missing_loudness_characteristics_dirty_) {
+    const SongList songs = watcher_->backend_->SongsWithMissingLoudnessCharacteristics(dir_);
+    for (const Song &song : songs) {
+      const QString p = song.url().toLocalFile().section('/', 0, -2);
+      cached_songs_missing_loudness_characteristics_.insert(p, song);
+    }
+    cached_songs_missing_loudness_characteristics_dirty_ = false;
+  }
+
+  return cached_songs_missing_loudness_characteristics_.contains(path);
+
+}
+
 void CollectionWatcher::ScanTransaction::SetKnownSubdirs(const CollectionSubdirectoryList &subdirs) {
 
   known_subdirs_ = subdirs;
@@ -426,13 +456,19 @@ void CollectionWatcher::ScanSubdirectory(const QString &path, const CollectionSu
   }
 
   bool songs_missing_fingerprint = false;
+  bool songs_missing_loudness_characteristics = false;
 #ifdef HAVE_SONGFINGERPRINTING
   if (song_tracking_) {
     songs_missing_fingerprint = t->HasSongsWithMissingFingerprint(path);
   }
 #endif
+#ifdef HAVE_EBUR128
+  if (song_ebur128_loudness_analysis_) {
+    songs_missing_loudness_characteristics = t->HasSongsWithMissingLoudnessCharacteristics(path);
+  }
+#endif
 
-  if (!t->ignores_mtime() && !force_noincremental && t->is_incremental() && subdir.mtime == path_info.lastModified().toSecsSinceEpoch() && !songs_missing_fingerprint) {
+  if (!t->ignores_mtime() && !force_noincremental && t->is_incremental() && subdir.mtime == path_info.lastModified().toSecsSinceEpoch() && !songs_missing_fingerprint && !songs_missing_loudness_characteristics) {
     // The directory hasn't changed since last time
     t->AddToProgress(files_count);
     return;
@@ -474,7 +510,7 @@ void CollectionWatcher::ScanSubdirectory(const QString &path, const CollectionSu
     else {
       QString ext_part(ExtensionPart(child));
       QString dir_part(DirectoryPart(child));
-      if (child_info.suffix() == "tmp" || child_info.baseName() == "qt_temp") {
+      if (kIgnoredExtensions.contains(child_info.suffix(), Qt::CaseInsensitive) || child_info.baseName() == "qt_temp") {
         t->AddToProgress(1);
       }
       else if (sValidImages.contains(ext_part)) {
@@ -545,9 +581,15 @@ void CollectionWatcher::ScanSubdirectory(const QString &path, const CollectionSu
       }
 
       bool missing_fingerprint = false;
+      bool missing_loudness_characteristics = false;
 #ifdef HAVE_SONGFINGERPRINTING
       if (song_tracking_ && matching_song.fingerprint().isEmpty()) {
         missing_fingerprint = true;
+      }
+#endif
+#ifdef HAVE_EBUR128
+      if (song_ebur128_loudness_analysis_ && (!matching_song.ebur128_integrated_loudness_lufs() || !matching_song.ebur128_loudness_range_lu())) {
+        missing_loudness_characteristics = true;
       }
 #endif
 
@@ -557,9 +599,12 @@ void CollectionWatcher::ScanSubdirectory(const QString &path, const CollectionSu
       else if (missing_fingerprint) {
         qLog(Debug) << file << "is missing fingerprint.";
       }
+      else if (missing_loudness_characteristics) {
+        qLog(Debug) << file << "is missing EBU R 128 loudness characteristics.";
+      }
 
       // The song's changed or missing fingerprint - create fingerprint and reread the metadata from file.
-      if (t->ignores_mtime() || changed || missing_fingerprint) {
+      if (t->ignores_mtime() || changed || missing_fingerprint || missing_loudness_characteristics) {
 
         QString fingerprint;
 #ifdef HAVE_SONGFINGERPRINTING
@@ -578,7 +623,6 @@ void CollectionWatcher::ScanSubdirectory(const QString &path, const CollectionSu
         else {  // If CUE associated.
           UpdateCueAssociatedSongs(file, path, fingerprint, new_cue, art_automatic, matching_songs, t);
         }
-
       }
 
       // Nothing has changed - mark the song available without re-scanning
@@ -728,6 +772,7 @@ void CollectionWatcher::UpdateCueAssociatedSongs(const QString &file,
   for (Song new_cue_song : songs) {
     new_cue_song.set_source(source_);
     new_cue_song.set_directory_id(t->dir());
+    PerformEBUR128Analysis(new_cue_song);
     new_cue_song.set_fingerprint(fingerprint);
 
     if (sections_map.contains(new_cue_song.beginning_nanosec())) {  // Changed section
@@ -749,7 +794,6 @@ void CollectionWatcher::UpdateCueAssociatedSongs(const QString &file,
       t->deleted_songs << old_cue;
     }
   }
-
 }
 
 void CollectionWatcher::UpdateNonCueAssociatedSong(const QString &file,
@@ -775,6 +819,7 @@ void CollectionWatcher::UpdateNonCueAssociatedSong(const QString &file,
     song_on_disk.set_source(source_);
     song_on_disk.set_directory_id(t->dir());
     song_on_disk.set_id(matching_song.id());
+    PerformEBUR128Analysis(song_on_disk);
     song_on_disk.set_fingerprint(fingerprint);
     song_on_disk.set_art_automatic(art_automatic);
     song_on_disk.MergeUserSetData(matching_song, !overwrite_playcount_, !overwrite_rating_);
@@ -810,6 +855,7 @@ SongList CollectionWatcher::ScanNewFile(const QString &file, const QString &path
     songs.reserve(cue_congs.count());
     for (Song &cue_song : cue_congs) {
       cue_song.set_source(source_);
+      PerformEBUR128Analysis(cue_song);
       cue_song.set_fingerprint(fingerprint);
       if (cue_song.url().toLocalFile().normalized(QString::NormalizationForm_D) == file_nfd) {
         songs << cue_song;
@@ -824,6 +870,7 @@ SongList CollectionWatcher::ScanNewFile(const QString &file, const QString &path
     TagReaderClient::Instance()->ReadFileBlocking(file, &song);
     if (song.is_valid()) {
       song.set_source(source_);
+      PerformEBUR128Analysis(song);
       song.set_fingerprint(fingerprint);
       songs << song;
     }
@@ -875,6 +922,10 @@ void CollectionWatcher::AddChangedSong(const QString &file, const Song &matching
       changes << "musicbrainz";
       notify_new = true;
     }
+    if (!matching_song.IsEBUR128Equal(new_song)) {
+      changes << "ebur128 loudness characteristics";
+      notify_new = true;
+    }
     if (matching_song.mtime() != new_song.mtime()) {
       changes << "mtime";
     }
@@ -894,6 +945,20 @@ void CollectionWatcher::AddChangedSong(const QString &file, const Song &matching
   else {
     t->touched_songs << new_song;
   }
+
+}
+
+void CollectionWatcher::PerformEBUR128Analysis(Song &song) const {
+
+  if (!song_ebur128_loudness_analysis_) return;
+
+#ifdef HAVE_EBUR128
+  std::optional<EBUR128Measures> loudness_characteristics = EBUR128Analysis::Compute(song);
+  if (loudness_characteristics) {
+    song.set_ebur128_integrated_loudness_lufs(loudness_characteristics->loudness_lufs);
+    song.set_ebur128_loudness_range_lu(loudness_characteristics->range_lu);
+  }
+#endif
 
 }
 

@@ -19,9 +19,9 @@
 
 #include "config.h"
 
-#include <memory>
 #include <functional>
 #include <chrono>
+#include <memory>
 
 #include <QObject>
 #include <QStandardPaths>
@@ -41,6 +41,7 @@
 #include "scrobblercache.h"
 #include "scrobblercacheitem.h"
 
+using std::make_shared;
 using namespace std::chrono_literals;
 
 ScrobblerCache::ScrobblerCache(const QString &filename, QObject *parent)
@@ -142,7 +143,7 @@ void ScrobblerCache::ReadCache() {
     metadata.albumartist = json_obj_track["albumartist"].toString();
     metadata.length_nanosec = json_obj_track["length_nanosec"].toVariant().toLongLong();
 
-    if (timestamp <= 0 || metadata.artist.isEmpty() || metadata.title.isEmpty() || metadata.length_nanosec <= 0) {
+    if (timestamp == 0 || metadata.artist.isEmpty() || metadata.title.isEmpty() || metadata.length_nanosec <= 0) {
       qLog(Error) << "Invalid cache data" << "for song" << metadata.title;
       continue;
     }
@@ -182,7 +183,7 @@ void ScrobblerCache::ReadCache() {
       metadata.musicbrainz_work_id = json_obj_track["musicbrainz_work_id"].toString();
     }
 
-    ScrobblerCacheItemPtr cache_item = std::make_shared<ScrobblerCacheItem>(metadata, timestamp);
+    ScrobblerCacheItemPtr cache_item = make_shared<ScrobblerCacheItem>(metadata, timestamp);
     scrobbler_cache_ << cache_item;
 
   }
@@ -248,7 +249,7 @@ void ScrobblerCache::WriteCache() {
 
 ScrobblerCacheItemPtr ScrobblerCache::Add(const Song &song, const quint64 timestamp) {
 
-  ScrobblerCacheItemPtr cache_item = std::make_shared<ScrobblerCacheItem>(ScrobbleMetadata(song), timestamp);
+  ScrobblerCacheItemPtr cache_item = make_shared<ScrobblerCacheItem>(ScrobbleMetadata(song), timestamp);
 
   scrobbler_cache_ << cache_item;
 

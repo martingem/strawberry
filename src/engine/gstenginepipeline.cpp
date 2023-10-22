@@ -21,10 +21,10 @@
 
 #include "config.h"
 
-#include <memory>
 #include <cstdint>
 #include <cstring>
 #include <cmath>
+
 #include <glib.h>
 #include <glib-object.h>
 #include <gst/gst.h>
@@ -50,7 +50,6 @@
 #include "core/signalchecker.h"
 #include "utilities/timeconstants.h"
 #include "settings/backendsettingspage.h"
-#include "enginebase.h"
 #include "gstengine.h"
 #include "gstenginepipeline.h"
 #include "gstbufferconsumer.h"
@@ -78,6 +77,7 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       rg_preamp_(0.0),
       rg_fallbackgain_(0.0),
       rg_compression_(true),
+      ebur128_loudness_normalization_(false),
       buffer_duration_nanosec_(BackendSettingsPage::kDefaultBufferDuration * kNsecPerMsec),
       buffer_low_watermark_(BackendSettingsPage::kDefaultBufferLowWatermark),
       buffer_high_watermark_(BackendSettingsPage::kDefaultBufferHighWatermark),
@@ -94,11 +94,13 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       next_end_offset_nanosec_(-1),
       ignore_next_seek_(false),
       ignore_tags_(false),
-      pipeline_is_initialized_(false),
+      pipeline_is_active_(false),
       pipeline_is_connected_(false),
       pending_seek_nanosec_(-1),
       last_known_position_ns_(0),
       next_uri_set_(false),
+      next_uri_reset_(false),
+      ebur128_loudness_normalizing_gain_db_(0.0),
       volume_set_(false),
       volume_internal_(-1.0),
       volume_percent_(100),
@@ -111,6 +113,7 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       volume_(nullptr),
       volume_sw_(nullptr),
       volume_fading_(nullptr),
+      volume_ebur128_(nullptr),
       audiopanorama_(nullptr),
       equalizer_(nullptr),
       equalizer_preamp_(nullptr),
@@ -237,6 +240,12 @@ void GstEnginePipeline::set_replaygain(const bool enabled, const int mode, const
 
 }
 
+void GstEnginePipeline::set_ebur128_loudness_normalization(const bool enabled) {
+
+  ebur128_loudness_normalization_ = enabled;
+
+}
+
 void GstEnginePipeline::set_buffer_duration_nanosec(const quint64 buffer_duration_nanosec) {
   buffer_duration_nanosec_ = buffer_duration_nanosec;
 }
@@ -273,6 +282,25 @@ void GstEnginePipeline::set_fading_enabled(const bool enabled) {
   fading_enabled_ = enabled;
 }
 
+QString GstEnginePipeline::GstStateText(const GstState state) {
+
+  switch (state) {
+    case GST_STATE_VOID_PENDING:
+      return "Pending";
+    case GST_STATE_NULL:
+      return "Null";
+    case GST_STATE_READY:
+      return "Ready";
+    case GST_STATE_PAUSED:
+      return "Paused";
+    case GST_STATE_PLAYING:
+      return "Playing";
+    default:
+      return "Unknown";
+  }
+
+}
+
 GstElement *GstEnginePipeline::CreateElement(const QString &factory_name, const QString &name, GstElement *bin, QString &error) const {
 
   QString unique_name = QString("pipeline") + "-" + QString::number(id_) + "-" + (name.isEmpty() ? factory_name : name);
@@ -289,11 +317,12 @@ GstElement *GstEnginePipeline::CreateElement(const QString &factory_name, const 
 
 }
 
-bool GstEnginePipeline::InitFromUrl(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 end_nanosec, QString &error) {
+bool GstEnginePipeline::InitFromUrl(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 end_nanosec, const double ebur128_loudness_normalizing_gain_db, QString &error) {
 
   media_url_ = media_url;
   stream_url_ = stream_url;
   gst_url_ = gst_url;
+  ebur128_loudness_normalizing_gain_db_ = ebur128_loudness_normalizing_gain_db;
   end_offset_nanosec_ = end_nanosec;
 
   guint version_major = 0, version_minor = 0, version_micro = 0, version_nano = 0;
@@ -312,16 +341,6 @@ bool GstEnginePipeline::InitFromUrl(const QUrl &media_url, const QUrl &stream_ur
   about_to_finish_cb_id_ = CHECKED_GCONNECT(G_OBJECT(pipeline_), "about-to-finish", &AboutToFinishCallback, this);
 
   if (!InitAudioBin(error)) return false;
-
-  if (volume_enabled_ && !volume_) {
-    if (output_ == GstEngine::kAutoSink) {
-      element_added_cb_id_ = CHECKED_GCONNECT(G_OBJECT(audiobin_), "deep-element-added", &ElementAddedCallback, this);
-    }
-    else {
-      qLog(Debug) << output_ << "does not have volume, using own volume.";
-      SetupVolume(volume_sw_);
-    }
-  }
 
   // Set playbin's sink to be our custom audio-sink.
   g_object_set(GST_OBJECT(pipeline_), "audio-sink", audiobin_, nullptr);
@@ -462,10 +481,12 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
 
   }
 
+#ifndef Q_OS_WIN32
   if (g_object_class_find_property(G_OBJECT_GET_CLASS(audiosink_), "volume")) {
     qLog(Debug) << output_ << "has volume, enabling volume synchronization.";
     SetupVolume(audiosink_);
   }
+#endif
 
   // Create all the other elements
 
@@ -490,6 +511,8 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
     if (!volume_sw_) {
       return false;
     }
+    qLog(Debug) << output_ << "does not have volume, using own volume.";
+    SetupVolume(volume_sw_);
   }
 
   if (fading_enabled_) {
@@ -558,8 +581,9 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
 
   }
 
-  // Create the replaygain elements if it's enabled.
   eventprobe_ = audioqueueconverter_;
+
+  // Create the replaygain elements if it's enabled.
   GstElement *rgvolume = nullptr;
   GstElement *rglimiter = nullptr;
   GstElement *rgconverter = nullptr;
@@ -582,6 +606,18 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
     g_object_set(G_OBJECT(rgvolume), "pre-amp", rg_preamp_, nullptr);
     g_object_set(G_OBJECT(rgvolume), "fallback-gain", rg_fallbackgain_, nullptr);
     g_object_set(G_OBJECT(rglimiter), "enabled", static_cast<int>(rg_compression_), nullptr);
+  }
+
+  // Create the EBU R 128 loudness normalization volume element if enabled.
+  if (ebur128_loudness_normalization_) {
+    volume_ebur128_ = CreateElement("volume", "ebur128_volume", audiobin_, error);
+    if (!volume_ebur128_) {
+      return false;
+    }
+
+    UpdateEBUR128LoudnessNormalizingGaindB();
+
+    eventprobe_ = volume_ebur128_;
   }
 
   GstElement *bs2b = nullptr;
@@ -614,15 +650,13 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
   // We set this on this queue instead of the playbin because setting it on the playbin only affects network sources.
   // Disable the default buffer and byte limits, so we only buffer based on time.
 
+  qLog(Debug) << "Setting buffer duration:" << buffer_duration_nanosec_ << "low watermark:" << buffer_low_watermark_ << "high watermark:" << buffer_high_watermark_;
+  g_object_set(G_OBJECT(audioqueue_), "use-buffering", true, nullptr);
   g_object_set(G_OBJECT(audioqueue_), "max-size-buffers", 0, nullptr);
   g_object_set(G_OBJECT(audioqueue_), "max-size-bytes", 0, nullptr);
-  if (buffer_duration_nanosec_ > 0) {
-    qLog(Debug) << "Setting buffer duration:" << buffer_duration_nanosec_ << "low watermark:" << buffer_low_watermark_ << "high watermark:" << buffer_high_watermark_;
-    g_object_set(G_OBJECT(audioqueue_), "use-buffering", true, nullptr);
-    g_object_set(G_OBJECT(audioqueue_), "max-size-time", buffer_duration_nanosec_, nullptr);
-    g_object_set(G_OBJECT(audioqueue_), "low-watermark", buffer_low_watermark_, nullptr);
-    g_object_set(G_OBJECT(audioqueue_), "high-watermark", buffer_high_watermark_, nullptr);
-  }
+  g_object_set(G_OBJECT(audioqueue_), "max-size-time", buffer_duration_nanosec_, nullptr);
+  g_object_set(G_OBJECT(audioqueue_), "low-watermark", buffer_low_watermark_, nullptr);
+  g_object_set(G_OBJECT(audioqueue_), "high-watermark", buffer_high_watermark_, nullptr);
 
   // Link all elements
 
@@ -640,6 +674,20 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
       return false;
     }
     element_link = rgconverter;
+  }
+
+  // Link EBU R 128 loudness normalization volume element if enabled.
+  if (ebur128_loudness_normalization_ && volume_ebur128_) {
+    GstStaticCaps static_raw_fp_audio_caps = GST_STATIC_CAPS(
+      "audio/x-raw,"
+      "format = (string) { F32LE, F64LE }");
+    GstCaps *raw_fp_audio_caps = gst_static_caps_get(&static_raw_fp_audio_caps);
+    if (!gst_element_link_filtered(element_link, volume_ebur128_, raw_fp_audio_caps)) {
+      error = "Failed to link EBU R 128 volume element.";
+      return false;
+    }
+    gst_caps_unref(raw_fp_audio_caps);
+    element_link = volume_ebur128_;
   }
 
   // Link equalizer elements if enabled.
@@ -887,7 +935,7 @@ void GstEnginePipeline::PadAddedCallback(GstElement *element, GstPad *pad, gpoin
   instance->playbin_probe_cb_id_ = gst_pad_add_probe(pad, static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM | GST_PAD_PROBE_TYPE_EVENT_FLUSH), PlaybinProbeCallback, instance, nullptr);
 
   instance->pipeline_is_connected_ = true;
-  if (instance->pending_seek_nanosec_ != -1 && instance->pipeline_is_initialized_) {
+  if (instance->pending_seek_nanosec_ != -1 && instance->pipeline_is_active_) {
     QMetaObject::invokeMethod(instance, "Seek", Qt::QueuedConnection, Q_ARG(qint64, instance->pending_seek_nanosec_));
   }
 
@@ -1210,6 +1258,7 @@ void GstEnginePipeline::StreamStartMessageReceived() {
   if (next_uri_set_) {
     qLog(Debug) << "Stream changed from URL" << gst_url_ << "to" << next_gst_url_;
     next_uri_set_ = false;
+    next_uri_reset_ = false;
     about_to_finish_ = false;
     media_url_ = next_media_url_;
     stream_url_ = next_stream_url_;
@@ -1270,7 +1319,7 @@ void GstEnginePipeline::ErrorMessageReceived(GstMessage *msg) {
   g_error_free(error);
   g_free(debugs);
 
-  if (pipeline_is_initialized_ && next_uri_set_ && (domain == GST_CORE_ERROR || domain == GST_RESOURCE_ERROR || domain == GST_STREAM_ERROR)) {
+  if (pipeline_is_active_ && next_uri_set_ && (domain == GST_CORE_ERROR || domain == GST_RESOURCE_ERROR || domain == GST_STREAM_ERROR)) {
     // A track is still playing and the next uri is not playable. We ignore the error here so it can play until the end.
     // But there is no message send to the bus when the current track finishes, we have to add an EOS ourself.
     qLog(Info) << "Ignoring error" << domain << code << message << debugstr << "when loading next track";
@@ -1388,26 +1437,44 @@ void GstEnginePipeline::StateChangedMessageReceived(GstMessage *msg) {
   GstState old_state = GST_STATE_NULL, new_state = GST_STATE_NULL, pending = GST_STATE_NULL;
   gst_message_parse_state_changed(msg, &old_state, &new_state, &pending);
 
-  if (!pipeline_is_initialized_ && (new_state == GST_STATE_PAUSED || new_state == GST_STATE_PLAYING)) {
-    qLog(Debug) << "Pipeline initialized: State changed from" << old_state << "to" << new_state;
-    pipeline_is_initialized_ = true;
-    if (!volume_set_) {
-      SetVolume(volume_percent_);
-    }
-    if (pending_seek_nanosec_ != -1 && pipeline_is_connected_) {
-      QMetaObject::invokeMethod(this, "Seek", Qt::QueuedConnection, Q_ARG(qint64, pending_seek_nanosec_));
+  qLog(Debug) << "Pipeline state changed from" << GstStateText(old_state) << "to" << GstStateText(new_state);
+
+  if (!pipeline_is_active_ && (new_state == GST_STATE_PAUSED || new_state == GST_STATE_PLAYING)) {
+    qLog(Debug) << "Pipeline is active";
+    pipeline_is_active_ = true;
+    if (pipeline_is_connected_) {
+      if (!volume_set_) {
+        SetVolume(volume_percent_);
+      }
+      if (pending_seek_nanosec_ != -1) {
+        if (next_uri_reset_ && new_state == GST_STATE_PAUSED) {
+          qLog(Debug) << "Reverting next uri and going to playing state.";
+          next_uri_reset_ = false;
+          SeekDelayed(pending_seek_nanosec_);
+          SetStateDelayed(GST_STATE_PLAYING);
+        }
+        else {
+          SeekQueued(pending_seek_nanosec_);
+        }
+      }
     }
   }
 
-  if (pipeline_is_initialized_ && new_state != GST_STATE_PAUSED && new_state != GST_STATE_PLAYING) {
-    qLog(Debug) << "Pipeline uninitialized: State changed from" << old_state << "to" << new_state;
-    pipeline_is_initialized_ = false;
-
+  else if (pipeline_is_active_ && new_state != GST_STATE_PAUSED && new_state != GST_STATE_PLAYING) {
+    qLog(Debug) << "Pipeline is inactive";
+    pipeline_is_active_ = false;
     if (next_uri_set_ && new_state == GST_STATE_READY) {
-      // Revert uri and go back to PLAY state again
       next_uri_set_ = false;
       g_object_set(G_OBJECT(pipeline_), "uri", gst_url_.constData(), nullptr);
-      SetState(GST_STATE_PLAYING);
+      if (pending_seek_nanosec_ == -1) {
+        qLog(Debug) << "Reverting next uri and going to playing state.";
+        SetState(GST_STATE_PLAYING);
+      }
+      else {
+        qLog(Debug) << "Reverting next uri and going to paused state.";
+        next_uri_reset_ = true;
+        SetState(GST_STATE_PAUSED);
+      }
     }
   }
 
@@ -1445,8 +1512,11 @@ void GstEnginePipeline::BufferingMessageReceived(GstMessage *msg) {
 
 qint64 GstEnginePipeline::position() const {
 
-  if (pipeline_is_initialized_) {
-    gst_element_query_position(pipeline_, GST_FORMAT_TIME, &last_known_position_ns_);
+  if (pipeline_is_active_) {
+    gint64 current_position = 0;
+    if (gst_element_query_position(pipeline_, GST_FORMAT_TIME, &current_position)) {
+      last_known_position_ns_ = current_position;
+    }
   }
 
   return last_known_position_ns_;
@@ -1474,7 +1544,16 @@ GstState GstEnginePipeline::state() const {
 }
 
 QFuture<GstStateChangeReturn> GstEnginePipeline::SetState(const GstState state) {
+
+  qLog(Debug) << "Setting pipeline state to" << GstStateText(state);
   return QtConcurrent::run(&set_state_threadpool_, &gst_element_set_state, pipeline_, state);
+
+}
+
+void GstEnginePipeline::SetStateDelayed(const GstState state) {
+
+  QTimer::singleShot(300, this, [this, state]() { SetState(state); });
+
 }
 
 bool GstEnginePipeline::Seek(const qint64 nanosec) {
@@ -1484,7 +1563,7 @@ bool GstEnginePipeline::Seek(const qint64 nanosec) {
     return true;
   }
 
-  if (!pipeline_is_connected_ || !pipeline_is_initialized_) {
+  if (!pipeline_is_connected_ || !pipeline_is_active_) {
     pending_seek_nanosec_ = nanosec;
     return true;
   }
@@ -1497,7 +1576,39 @@ bool GstEnginePipeline::Seek(const qint64 nanosec) {
 
   pending_seek_nanosec_ = -1;
   last_known_position_ns_ = nanosec;
+
+  qLog(Debug) << "Seeking to" << nanosec;
+
   return gst_element_seek_simple(pipeline_, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH, nanosec);
+
+}
+
+void GstEnginePipeline::SeekQueued(const qint64 nanosec) {
+
+  QMetaObject::invokeMethod(this, "Seek", Qt::QueuedConnection, Q_ARG(qint64, nanosec));
+
+}
+
+void GstEnginePipeline::SeekDelayed(const qint64 nanosec) {
+
+  QTimer::singleShot(100, this, [this, nanosec]() { SeekQueued(nanosec); });
+
+}
+
+void GstEnginePipeline::SetEBUR128LoudnessNormalizingGain_dB(const double ebur128_loudness_normalizing_gain_db) {
+
+  ebur128_loudness_normalizing_gain_db_ = ebur128_loudness_normalizing_gain_db;
+  UpdateEBUR128LoudnessNormalizingGaindB();
+
+}
+
+void GstEnginePipeline::UpdateEBUR128LoudnessNormalizingGaindB() {
+
+  if (volume_ebur128_) {
+    auto dB_to_mult = [](const double gain_dB) { return std::pow(10., gain_dB / 20.); };
+
+    g_object_set(G_OBJECT(volume_ebur128_), "volume", dB_to_mult(ebur128_loudness_normalizing_gain_db_), nullptr);
+  }
 
 }
 
@@ -1508,7 +1619,7 @@ void GstEnginePipeline::SetVolume(const uint volume_percent) {
     if (!volume_set_ || volume_internal != volume_internal_) {
       volume_internal_ = volume_internal;
       g_object_set(G_OBJECT(volume_), "volume", volume_internal, nullptr);
-      if (pipeline_is_initialized_) {
+      if (pipeline_is_active_) {
         volume_set_ = true;
       }
     }
@@ -1601,8 +1712,8 @@ void GstEnginePipeline::StartFader(const qint64 duration_nanosec, const QTimeLin
     }
     timeline->deleteLater();
   });
-  QObject::connect(fader_.get(), &QTimeLine::valueChanged, this, &GstEnginePipeline::SetFaderVolume);
-  QObject::connect(fader_.get(), &QTimeLine::finished, this, &GstEnginePipeline::FaderTimelineFinished);
+  QObject::connect(&*fader_, &QTimeLine::valueChanged, this, &GstEnginePipeline::SetFaderVolume);
+  QObject::connect(&*fader_, &QTimeLine::finished, this, &GstEnginePipeline::FaderTimelineFinished);
   fader_->setDirection(direction);
   fader_->setEasingCurve(shape);
   fader_->setCurrentTime(static_cast<int>(start_time));

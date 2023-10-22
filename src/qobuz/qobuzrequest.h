@@ -37,6 +37,7 @@
 #include <QUrl>
 #include <QJsonObject>
 
+#include "core/shared_ptr.h"
 #include "core/song.h"
 #include "qobuzbaserequest.h"
 
@@ -52,7 +53,7 @@ class QobuzRequest : public QobuzBaseRequest {
 
  public:
 
-  explicit QobuzRequest(QobuzService *service, QobuzUrlHandler *url_handler, Application *app, NetworkAccessManager *network, const QueryType query_type, QObject *parent = nullptr);
+  explicit QobuzRequest(QobuzService *service, QobuzUrlHandler *url_handler, Application *app, SharedPtr<NetworkAccessManager> network, const QueryType query_type, QObject *parent = nullptr);
   ~QobuzRequest() override;
 
   void ReloadSettings();
@@ -181,7 +182,7 @@ class QobuzRequest : public QobuzBaseRequest {
   QobuzService *service_;
   QobuzUrlHandler *url_handler_;
   Application *app_;
-  NetworkAccessManager *network_;
+  SharedPtr<NetworkAccessManager> network_;
   QTimer *timer_flush_requests_;
 
   const QueryType query_type_;
@@ -241,7 +242,6 @@ class QobuzRequest : public QobuzBaseRequest {
   bool no_results_;
   QList<QNetworkReply*> replies_;
   QList<QNetworkReply*> album_cover_replies_;
-
 };
 
 #endif  // QOBUZREQUEST_H

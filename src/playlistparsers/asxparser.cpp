@@ -29,6 +29,7 @@
 #include <QXmlStreamReader>
 #include <QXmlStreamWriter>
 
+#include "core/shared_ptr.h"
 #include "utilities/xmlutils.h"
 #include "settings/playlistsettingspage.h"
 #include "xmlparser.h"
@@ -36,8 +37,8 @@
 
 class CollectionBackendInterface;
 
-ASXParser::ASXParser(CollectionBackendInterface *collection, QObject *parent)
-    : XMLParser(collection, parent) {}
+ASXParser::ASXParser(SharedPtr<CollectionBackendInterface> collection_backend, QObject *parent)
+    : XMLParser(collection_backend, parent) {}
 
 SongList ASXParser::Load(QIODevice *device, const QString &playlist_path, const QDir &dir, const bool collection_search) const {
 
@@ -54,7 +55,7 @@ SongList ASXParser::Load(QIODevice *device, const QString &playlist_path, const 
     QString url = re_match.captured(2);
     url.replace(QRegularExpression("&(?!amp;|quot;|apos;|lt;|gt;)"), "&amp;");
 
-    QByteArray replacement = QString(re_match.captured(1) + url + "\"").toLocal8Bit();
+    QByteArray replacement = QString("%1%2\"").arg(re_match.captured(1), url).toLocal8Bit();
     data.replace(re_match.captured(0).toLocal8Bit(), replacement);
     index += replacement.length();
   }

@@ -32,8 +32,10 @@
 #include <QString>
 #include <QPixmap>
 
-#include "widgets/autoexpandingtreeview.h"
+#include "core/shared_ptr.h"
 #include "core/song.h"
+
+#include "widgets/autoexpandingtreeview.h"
 
 class QWidget;
 class QMenu;
@@ -53,7 +55,7 @@ class InternetCollectionView : public AutoExpandingTreeView {
  public:
   explicit InternetCollectionView(QWidget *parent = nullptr);
 
-  void Init(Application *app, CollectionBackend *backend, CollectionModel *model, const bool favorite = false);
+  void Init(Application *app, SharedPtr<CollectionBackend> collection_backend, CollectionModel *collection_model, const bool favorite = false);
 
   // Returns Songs currently selected in the collection view.
   // Please note that the selection is recursive meaning that if for example an album is selected this will return all of it's songs.
@@ -110,7 +112,7 @@ class InternetCollectionView : public AutoExpandingTreeView {
 
  private:
   Application *app_;
-  CollectionBackend *collection_backend_;
+  SharedPtr<CollectionBackend> collection_backend_;
   CollectionModel *collection_model_;
   CollectionFilterWidget *filter_;
   bool favorite_;
@@ -136,7 +138,6 @@ class InternetCollectionView : public AutoExpandingTreeView {
   Song last_selected_song_;
   QString last_selected_container_;
   QSet<QString> last_selected_path_;
-
 };
 
 #endif  // INTERNETCOLLECTIONVIEW_H

@@ -37,7 +37,9 @@
 #include <QUrl>
 #include <QJsonObject>
 
+#include "core/shared_ptr.h"
 #include "core/song.h"
+
 #include "tidalbaserequest.h"
 
 class QNetworkReply;
@@ -51,7 +53,7 @@ class TidalRequest : public TidalBaseRequest {
   Q_OBJECT
 
  public:
-  explicit TidalRequest(TidalService *service, TidalUrlHandler *url_handler, Application *app, NetworkAccessManager *network, QueryType query_type, QObject *parent);
+  explicit TidalRequest(TidalService *service, TidalUrlHandler *url_handler, Application *app, SharedPtr<NetworkAccessManager> network, QueryType query_type, QObject *parent);
   ~TidalRequest() override;
 
   void ReloadSettings();
@@ -109,7 +111,7 @@ class TidalRequest : public TidalBaseRequest {
   void ArtistsReplyReceived(QNetworkReply *reply, const int limit_requested, const int offset_requested);
 
   void AlbumsReplyReceived(QNetworkReply *reply, const int limit_requested, const int offset_requested);
-  void AlbumsReceived(QNetworkReply *reply, const Artist &artist_artist, const int limit_requested, const int offset_requested, const bool auto_login);
+  void AlbumsReceived(QNetworkReply *reply, const Artist &artist_requested, const int limit_requested, const int offset_requested, const bool auto_login);
 
   void SongsReplyReceived(QNetworkReply *reply, const int limit_requested, const int offset_requested);
   void SongsReceived(QNetworkReply *reply, const Artist &artist, const Album &album, const int limit_requested, const int offset_requested, const bool auto_login = false);
@@ -182,7 +184,7 @@ class TidalRequest : public TidalBaseRequest {
   TidalService *service_;
   TidalUrlHandler *url_handler_;
   Application *app_;
-  NetworkAccessManager *network_;
+  SharedPtr<NetworkAccessManager> network_;
   QTimer *timer_flush_requests_;
 
   const QueryType query_type_;
@@ -245,7 +247,6 @@ class TidalRequest : public TidalBaseRequest {
   bool need_login_;
   QList<QNetworkReply*> replies_;
   QList<QNetworkReply*> album_cover_replies_;
-
 };
 
 #endif  // TIDALREQUEST_H

@@ -24,10 +24,9 @@
 
 #include <QtGlobal>
 
-#include <glib.h>
 #include <cstdlib>
-#include <memory>
 #include <ctime>
+#include <memory>
 
 #ifdef Q_OS_UNIX
 #  include <unistd.h>
@@ -42,6 +41,8 @@
 #  include <windows.h>
 #  include <iostream>
 #endif  // Q_OS_WIN32
+
+#include <glib.h>
 
 #include <QObject>
 #include <QApplication>
@@ -65,6 +66,11 @@
 #include "main.h"
 
 #include "core/logging.h"
+
+#include "core/scoped_ptr.h"
+#include "core/shared_ptr.h"
+
+#include "utilities/envutils.h"
 
 #include <kdsingleapplication.h>
 
@@ -109,6 +115,8 @@
 #  include "osd/osdbase.h"
 #endif
 
+using std::make_shared;
+
 int main(int argc, char *argv[]) {
 
 #ifdef Q_OS_MACOS
@@ -148,7 +156,11 @@ int main(int argc, char *argv[]) {
     // Only start a core application now, so we can check if there's another instance without requiring an X server.
     // This MUST be done before parsing the commandline options so QTextCodec gets the right system locale for filenames.
     QCoreApplication core_app(argc, argv);
+#ifdef HAVE_KDSINGLEAPPLICATION_OPTIONS
+    KDSingleApplication single_app(QCoreApplication::applicationName(), KDSingleApplication::Option::IncludeUsernameInSocketName);
+#else
     KDSingleApplication single_app(QCoreApplication::applicationName());
+#endif
     // Parse commandline options - need to do this before starting the full QApplication, so it works without an X server
     if (!options.Parse()) return 1;
     logging::SetLevels(options.log_levels());
@@ -165,7 +177,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef Q_OS_MACOS
   // Must happen after QCoreApplication::setOrganizationName().
-  setenv("XDG_CONFIG_HOME", QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation).toLocal8Bit().constData(), 1);
+  Utilities::SetEnv("XDG_CONFIG_HOME", QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
 #endif
 
   // Output the version, so when people attach log output to bug reports they don't have to tell us which version they're using.
@@ -180,10 +192,16 @@ int main(int argc, char *argv[]) {
   Utilities::IncreaseFDLimit();
 #endif
 
+  QGuiApplication::setApplicationDisplayName("Strawberry Music Player");
+  QGuiApplication::setDesktopFileName("org.strawberrymusicplayer.strawberry");
   QGuiApplication::setQuitOnLastWindowClosed(false);
 
   QApplication a(argc, argv);
+#ifdef HAVE_KDSINGLEAPPLICATION_OPTIONS
+  KDSingleApplication single_app(QCoreApplication::applicationName(), KDSingleApplication::Option::IncludeUsernameInSocketName);
+#else
   KDSingleApplication single_app(QCoreApplication::applicationName());
+#endif
   if (!single_app.isPrimaryInstance()) {
     if (options.is_empty()) {
       qLog(Info) << "Strawberry is already running - activating existing window (2)";
@@ -197,19 +215,7 @@ int main(int argc, char *argv[]) {
   QGuiApplication::setWindowIcon(IconLoader::Load("strawberry"));
 
 #if defined(USE_BUNDLE)
-  {
-    QStringList library_paths;
-#ifdef Q_OS_MACOS
-    library_paths.append(QCoreApplication::applicationDirPath() + "/../Frameworks");
-#endif
-#if defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
-    library_paths.append(QCoreApplication::applicationDirPath() + "/" + USE_BUNDLE_DIR);
-#endif
-    if (!library_paths.isEmpty()) {
-      qLog(Debug) << "Looking for resources in" << library_paths;
-      QCoreApplication::setLibraryPaths(library_paths);
-    }
-  }
+  qLog(Debug) << "Looking for resources in" << QCoreApplication::libraryPaths();
 #endif
 
   // Gnome on Ubuntu has menu icons disabled by default.  I think that's a bad idea, and makes some menus in Strawberry look confusing.
@@ -270,7 +276,7 @@ int main(int argc, char *argv[]) {
 
   const QString language = override_language.isEmpty() ? system_language : override_language;
 
-  std::unique_ptr<Translations> translations(new Translations);
+  ScopedPtr<Translations> translations(new Translations);
 
 #  if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   translations->LoadTranslation("qt", QLibraryInfo::path(QLibraryInfo::TranslationsPath), language);
@@ -294,7 +300,7 @@ int main(int argc, char *argv[]) {
   QNetworkProxyFactory::setApplicationProxyFactory(NetworkProxyFactory::Instance());
 
   // Create the tray icon and OSD
-  std::shared_ptr<SystemTrayIcon> tray_icon = std::make_shared<SystemTrayIcon>();
+  SharedPtr<SystemTrayIcon> tray_icon = make_shared<SystemTrayIcon>();
 
 #if defined(Q_OS_MACOS)
   OSDMac osd(tray_icon, &app);

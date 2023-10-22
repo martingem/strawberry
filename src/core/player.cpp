@@ -38,6 +38,8 @@
 #include "core/logging.h"
 #include "utilities/timeconstants.h"
 
+#include "scoped_ptr.h"
+#include "shared_ptr.h"
 #include "song.h"
 #include "urlhandler.h"
 #include "application.h"
@@ -64,9 +66,8 @@
 #include "settings/backendsettingspage.h"
 #include "settings/behavioursettingspage.h"
 #include "settings/playlistsettingspage.h"
-#include "internet/internetservices.h"
-#include "internet/internetservice.h"
-#include "scrobbler/audioscrobbler.h"
+
+using std::make_shared;
 
 const char *Player::kSettingsGroup = "Player";
 
@@ -111,7 +112,7 @@ EngineBase::Type Player::CreateEngine(EngineBase::Type enginetype) {
 #ifdef HAVE_GSTREAMER
       case EngineBase::Type::GStreamer:{
         use_enginetype=EngineBase::Type::GStreamer;
-        std::unique_ptr<GstEngine> gst_engine(new GstEngine(app_->task_manager()));
+        ScopedPtr<GstEngine> gst_engine(new GstEngine(app_->task_manager()));
         gst_engine->SetStartup(gst_startup_);
         engine_.reset(gst_engine.release());
         break;
@@ -120,7 +121,7 @@ EngineBase::Type Player::CreateEngine(EngineBase::Type enginetype) {
 #ifdef HAVE_VLC
       case EngineBase::Type::VLC:
         use_enginetype = EngineBase::Type::VLC;
-        engine_ = std::make_shared<VLCEngine>(app_->task_manager());
+        engine_ = make_shared<VLCEngine>(app_->task_manager());
         break;
 #endif
       default:
@@ -166,23 +167,23 @@ void Player::Init() {
     qFatal("Error initializing audio engine");
   }
 
-  analyzer_->SetEngine(engine_.get());
+  analyzer_->SetEngine(engine_);
 
-  QObject::connect(engine_.get(), &EngineBase::Error, this, &Player::Error);
-  QObject::connect(engine_.get(), &EngineBase::FatalError, this, &Player::FatalError);
-  QObject::connect(engine_.get(), &EngineBase::ValidSongRequested, this, &Player::ValidSongRequested);
-  QObject::connect(engine_.get(), &EngineBase::InvalidSongRequested, this, &Player::InvalidSongRequested);
-  QObject::connect(engine_.get(), &EngineBase::StateChanged, this, &Player::EngineStateChanged);
-  QObject::connect(engine_.get(), &EngineBase::TrackAboutToEnd, this, &Player::TrackAboutToEnd);
-  QObject::connect(engine_.get(), &EngineBase::TrackEnded, this, &Player::TrackEnded);
-  QObject::connect(engine_.get(), &EngineBase::MetaData, this, &Player::EngineMetadataReceived);
-  QObject::connect(engine_.get(), &EngineBase::VolumeChanged, this, &Player::SetVolumeFromEngine);
+  QObject::connect(&*engine_, &EngineBase::Error, this, &Player::Error);
+  QObject::connect(&*engine_, &EngineBase::FatalError, this, &Player::FatalError);
+  QObject::connect(&*engine_, &EngineBase::ValidSongRequested, this, &Player::ValidSongRequested);
+  QObject::connect(&*engine_, &EngineBase::InvalidSongRequested, this, &Player::InvalidSongRequested);
+  QObject::connect(&*engine_, &EngineBase::StateChanged, this, &Player::EngineStateChanged);
+  QObject::connect(&*engine_, &EngineBase::TrackAboutToEnd, this, &Player::TrackAboutToEnd);
+  QObject::connect(&*engine_, &EngineBase::TrackEnded, this, &Player::TrackEnded);
+  QObject::connect(&*engine_, &EngineBase::MetaData, this, &Player::EngineMetadataReceived);
+  QObject::connect(&*engine_, &EngineBase::VolumeChanged, this, &Player::SetVolumeFromEngine);
 
   // Equalizer
-  QObject::connect(equalizer_, &Equalizer::StereoBalancerEnabledChanged, app_->player()->engine(), &EngineBase::SetStereoBalancerEnabled);
-  QObject::connect(equalizer_, &Equalizer::StereoBalanceChanged, app_->player()->engine(), &EngineBase::SetStereoBalance);
-  QObject::connect(equalizer_, &Equalizer::EqualizerEnabledChanged, app_->player()->engine(), &EngineBase::SetEqualizerEnabled);
-  QObject::connect(equalizer_, &Equalizer::EqualizerParametersChanged, app_->player()->engine(), &EngineBase::SetEqualizerParameters);
+  QObject::connect(&*equalizer_, &Equalizer::StereoBalancerEnabledChanged, &*app_->player()->engine(), &EngineBase::SetStereoBalancerEnabled);
+  QObject::connect(&*equalizer_, &Equalizer::StereoBalanceChanged, &*app_->player()->engine(), &EngineBase::SetStereoBalance);
+  QObject::connect(&*equalizer_, &Equalizer::EqualizerEnabledChanged, &*app_->player()->engine(), &EngineBase::SetEqualizerEnabled);
+  QObject::connect(&*equalizer_, &Equalizer::EqualizerParametersChanged, &*app_->player()->engine(), &EngineBase::SetEqualizerParameters);
 
   engine_->SetStereoBalancerEnabled(equalizer_->is_stereo_balancer_enabled());
   engine_->SetStereoBalance(equalizer_->stereo_balance());
@@ -341,7 +342,7 @@ void Player::HandleLoadResult(const UrlHandler::LoadResult &result) {
 
       if (is_current) {
         qLog(Debug) << "Playing song" << item->Metadata().title() << result.stream_url_ << "position" << play_offset_nanosec_;
-        engine_->Play(result.media_url_, result.stream_url_, stream_change_type_, song.has_cue(), song.beginning_nanosec(), song.end_nanosec(), play_offset_nanosec_);
+        engine_->Play(result.media_url_, result.stream_url_, stream_change_type_, song.has_cue(), song.beginning_nanosec(), song.end_nanosec(), play_offset_nanosec_, song.ebur128_integrated_loudness_lufs());
         current_item_ = item;
         play_offset_nanosec_ = 0;
       }
@@ -384,7 +385,7 @@ void Player::NextItem(const EngineBase::TrackChangeFlags change, const Playlist:
   Playlist *active_playlist = app_->playlist_manager()->active();
 
   // If we received too many errors in auto change, with repeat enabled, we stop
-  if (change == EngineBase::TrackChangeType::Auto) {
+  if (change & EngineBase::TrackChangeType::Auto) {
     const PlaylistSequence::RepeatMode repeat_mode = active_playlist->sequence()->repeat_mode();
     if (repeat_mode != PlaylistSequence::RepeatMode::Off) {
       if ((repeat_mode == PlaylistSequence::RepeatMode::Track && nb_errors_received_ >= 3) || (nb_errors_received_ >= app_->playlist_manager()->active()->filter()->rowCount())) {
@@ -394,6 +395,11 @@ void Player::NextItem(const EngineBase::TrackChangeFlags change, const Playlist:
         return;
       }
     }
+  }
+
+  if (nb_errors_received_ >= 100) {
+    Stop();
+    return;
   }
 
   // Manual track changes override "Repeat track"
@@ -700,7 +706,7 @@ void Player::PlayAt(const int index, const quint64 offset_nanosec, EngineBase::T
   pause_time_ = QDateTime();
   play_offset_nanosec_ = offset_nanosec;
 
-  if (current_item_ && change == EngineBase::TrackChangeType::Manual && engine_->position_nanosec() != engine_->length_nanosec()) {
+  if (current_item_ && change & EngineBase::TrackChangeType::Manual && engine_->position_nanosec() != engine_->length_nanosec()) {
     emit TrackSkipped(current_item_);
   }
 
@@ -731,7 +737,7 @@ void Player::PlayAt(const int index, const quint64 offset_nanosec, EngineBase::T
   }
   else {
     qLog(Debug) << "Playing song" << current_item_->Metadata().title() << url << "position" << offset_nanosec;
-    engine_->Play(current_item_->Url(), url, change, current_item_->Metadata().has_cue(), current_item_->effective_beginning_nanosec(), current_item_->effective_end_nanosec(), offset_nanosec);
+    engine_->Play(current_item_->Url(), url, change, current_item_->Metadata().has_cue(), current_item_->effective_beginning_nanosec(), current_item_->effective_end_nanosec(), offset_nanosec, current_item_->effective_ebur128_integrated_loudness_lufs());
   }
 
 }

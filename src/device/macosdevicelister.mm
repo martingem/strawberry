@@ -19,10 +19,9 @@
  *
  */
 
-#include <boost/scope_exit.hpp>
-
 #include <libmtp.h>
 
+#include <AvailabilityMacros.h>
 #include <CoreFoundation/CFRunLoop.h>
 #include <DiskArbitration/DiskArbitration.h>
 #include <IOKit/kext/KextManager.h>
@@ -37,6 +36,7 @@
 #include <QStringList>
 #include <QUrlQuery>
 #include <QUrl>
+#include <QScopeGuard>
 
 #include "config.h"
 #include "macosdevicelister.h"
@@ -156,7 +156,13 @@ bool MacOsDeviceLister::Init() {
   DASessionScheduleWithRunLoop(loop_session_, run_loop_, kCFRunLoopDefaultMode);
 
   // Register for USB device connection/disconnection.
-  IONotificationPortRef notification_port = IONotificationPortCreate(kIOMasterPortDefault);
+  IONotificationPortRef notification_port = IONotificationPortCreate(
+#if defined(MAC_OS_VERSION_12_0) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_VERSION_12_0)
+        kIOMainPortDefault
+#else
+        kIOMasterPortDefault
+#endif
+        );
   CFMutableDictionaryRef matching_dict = IOServiceMatching(kIOUSBDeviceClassName);
   // IOServiceAddMatchingNotification decreases reference count.
   CFRetain(matching_dict);
@@ -378,8 +384,8 @@ void MacOsDeviceLister::DiskAddedCallback(DADiskRef disk, void *context) {
 
   scoped_nsobject<NSDictionary> properties(reinterpret_cast<NSDictionary*>(DADiskCopyDescription(disk)));
 
-  NSString *kind = [properties objectForKey:reinterpret_cast<NSString*>(kDADiskDescriptionMediaKindKey)];
 #ifdef HAVE_AUDIOCD
+  NSString *kind = [properties objectForKey:reinterpret_cast<NSString*>(kDADiskDescriptionMediaKindKey)];
   if (kind && strcmp([kind UTF8String], kIOCDMediaClass) == 0) {
     // CD inserted.
     QString bsd_name = QString::fromLatin1(DADiskGetBSDName(disk));
@@ -491,10 +497,7 @@ void MacOsDeviceLister::USBDeviceAddedCallback(void *refcon, io_iterator_t it) {
   io_object_t object;
   while ((object = IOIteratorNext(it))) {
     ScopedCFTypeRef<CFStringRef> class_name(IOObjectCopyClass(object));
-    BOOST_SCOPE_EXIT((object)) {
-      IOObjectRelease(object);
-    }
-    BOOST_SCOPE_EXIT_END
+    const QScopeGuard io_object_release = qScopeGuard([object]() { IOObjectRelease(object); });
 
     if (CFStringCompare(class_name.get(), CFSTR(kIOUSBDeviceClassName), 0) == kCFCompareEqualTo) {
       NSString *vendor = reinterpret_cast<NSString*>(GetPropertyForDevice(object, CFSTR(kUSBVendorString)));
@@ -573,11 +576,10 @@ void MacOsDeviceLister::USBDeviceAddedCallback(void *refcon, io_iterator_t it) {
       }
 
       // Automatically close & release usb device at scope exit.
-      BOOST_SCOPE_EXIT((dev)) {
+      const QScopeGuard dev_close_release = qScopeGuard([dev]() {
         (*dev)->USBDeviceClose(dev);
         (*dev)->Release(dev);
-      }
-      BOOST_SCOPE_EXIT_END
+      });
 
       // Request the string descriptor at 0xee.
       // This is a magic string that indicates whether this device supports MTP.
@@ -629,8 +631,7 @@ void MacOsDeviceLister::USBDeviceRemovedCallback(void *refcon, io_iterator_t it)
   io_object_t object;
   while ((object = IOIteratorNext(it))) {
     ScopedCFTypeRef<CFStringRef> class_name(IOObjectCopyClass(object));
-    BOOST_SCOPE_EXIT((object)) { IOObjectRelease(object); }
-    BOOST_SCOPE_EXIT_END
+    const QScopeGuard io_object_release = qScopeGuard([object]() { IOObjectRelease(object); });
 
     if (CFStringCompare(class_name.get(), CFSTR(kIOUSBDeviceClassName), 0) == kCFCompareEqualTo) {
       NSString *vendor = reinterpret_cast<NSString*>(GetPropertyForDevice(object, CFSTR(kUSBVendorString)));

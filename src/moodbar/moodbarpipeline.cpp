@@ -17,8 +17,10 @@
 
 #include "moodbarpipeline.h"
 
-#include <memory>
 #include <cstdlib>
+
+#include <memory>
+
 #include <glib.h>
 #include <glib-object.h>
 #include <gst/gst.h>
@@ -36,6 +38,8 @@
 #include "moodbar/moodbarbuilder.h"
 
 #include "ext/gstmoodbar/gstfastspectrum.h"
+
+using std::make_unique;
 
 const int MoodbarPipeline::kBands = 128;
 
@@ -107,7 +111,7 @@ void MoodbarPipeline::Start() {
     return;
   }
 
-  builder_ = std::make_unique<MoodbarBuilder>();
+  builder_ = make_unique<MoodbarBuilder>();
 
   // Set properties
 

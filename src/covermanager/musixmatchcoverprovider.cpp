@@ -32,6 +32,7 @@
 #include <QJsonParseError>
 #include <QJsonObject>
 
+#include "core/shared_ptr.h"
 #include "core/logging.h"
 #include "core/networkaccessmanager.h"
 #include "providers/musixmatchprovider.h"
@@ -39,7 +40,7 @@
 #include "jsoncoverprovider.h"
 #include "musixmatchcoverprovider.h"
 
-MusixmatchCoverProvider::MusixmatchCoverProvider(Application *app, NetworkAccessManager *network, QObject *parent)
+MusixmatchCoverProvider::MusixmatchCoverProvider(Application *app, SharedPtr<NetworkAccessManager> network, QObject *parent)
     : JsonCoverProvider("Musixmatch", true, false, 1.0, true, false, app, network, parent) {}
 
 MusixmatchCoverProvider::~MusixmatchCoverProvider() {
@@ -109,8 +110,8 @@ void MusixmatchCoverProvider::HandleSearchReply(QNetworkReply *reply, const int 
     return;
   }
   QString content = data;
-  QString data_begin = "var __mxmState = ";
-  QString data_end = ";</script>";
+  const QString data_begin = "var __mxmState = ";
+  const QString data_end = ";</script>";
   qint64 begin_idx = content.indexOf(data_begin);
   QString content_json;
   if (begin_idx > 0) {

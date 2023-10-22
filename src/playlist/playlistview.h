@@ -24,8 +24,6 @@
 
 #include "config.h"
 
-#include <memory>
-
 #include <QtGlobal>
 #include <QObject>
 #include <QAbstractItemDelegate>
@@ -42,10 +40,8 @@
 #include <QRect>
 #include <QRegion>
 #include <QStyleOption>
-#include <QProxyStyle>
 #include <QPoint>
 #include <QBasicTimer>
-#include <QCommonStyle>
 
 #include "core/song.h"
 #include "covermanager/albumcoverloaderresult.h"
@@ -73,26 +69,9 @@ class QTimerEvent;
 class Application;
 class CollectionBackend;
 class PlaylistHeader;
+class PlaylistProxyStyle;
 class DynamicPlaylistControls;
 class RatingItemDelegate;
-
-// This proxy style works around a bug/feature introduced in Qt 4.7's QGtkStyle
-// that uses Gtk to paint row backgrounds, ignoring any custom brush or palette the caller set in the QStyleOption.
-// That breaks our currently playing track animation, which relies on the background painted by Qt to be transparent.
-// This proxy style uses QCommonStyle to paint the affected elements.
-// This class is used by internet search view as well.
-class PlaylistProxyStyle : public QProxyStyle {
-  Q_OBJECT
-
- public:
-  explicit PlaylistProxyStyle(QObject *parent = nullptr);
-
-  void drawControl(ControlElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const override;
-  void drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const override;
-
- private:
-  std::unique_ptr<QCommonStyle> common_style_;
-};
 
 class PlaylistView : public QTreeView {
   Q_OBJECT
@@ -305,7 +284,6 @@ class PlaylistView : public QTreeView {
 
   QPixmap pixmap_tinyplay_;
   QPixmap pixmap_tinypause_;
-
 };
 
 #endif  // PLAYLISTVIEW_H

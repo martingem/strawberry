@@ -33,6 +33,7 @@ Resources:
 * Search for the issue to see if it is already solved, or if there is an open issue for it already. If there is an open issue already, you can comment on it if you have additional information that could be useful to us.
 * For technical problems, discussion, questions and feature suggestions use the forum (https://forum.strawberrymusicplayer.org/) instead. The forum is better suited for discussion.
 * We do not take feature requests from users on GitHub. Any issues related to feature requests will be closed. This does not necessarily mean that we won't add new features, but we don't have time to take feature requests or answer questions about new features from users. It is still possible to suggest or discuss new features on the forum (https://forum.strawberrymusicplayer.org/).
+* We do not maintain the Flatpak package. Do not report issues related to Flatpak unless the issue can be reproduced with a native package, use Flatpak support instead https://flatpak.org/about/
 
 ### :moneybag:	Sponsoring:
 
@@ -41,7 +42,8 @@ There are currently 3 options for sponsoring:
 
 1. [GitHub Sponsors](https://github.com/sponsors/jonaski)
 2. [Patreon](https://www.patreon.com/jonaskvinge)
-3. [PayPal](https://paypal.me/jonaskvinge)
+3. [Ko-fi](https://ko-fi.com/jonaskvinge)
+4. [PayPal](https://paypal.me/jonaskvinge)
 
 Funding developers is a way to contribute to open source projects you appreciate, it helps developers get the resources they need, and recognize contributors working behind the scenes to make open source better for everyone.
 
@@ -54,10 +56,11 @@ Funding developers is a way to contribute to open source projects you appreciate
   * Playlist management
   * Smart and dynamic playlists
   * Advanced audio output and device configuration for bit-perfect playback on Linux
+  * In-player song loudness analysis and song playback loudness normalization, as per EBU R 128
   * Edit tags on audio files
   * Fetch tags from MusicBrainz
   * Album cover art from [Last.fm](https://www.last.fm/), [Musicbrainz](https://musicbrainz.org/), [Discogs](https://www.discogs.com/), [Musixmatch](https://www.musixmatch.com/), [Deezer](https://www.deezer.com/), [Tidal](https://www.tidal.com/), [Qobuz](https://www.qobuz.com/) and [Spotify](https://www.spotify.com/)
-  * Song lyrics from [Lyrics.com](https://www.lyrics.com/), [Genius](https://genius.com/), [Musixmatch](https://www.musixmatch.com/), [ChartLyrics](http://www.chartlyrics.com/), [lyrics.ovh](https://lyrics.ovh/) and [lololyrics.com](https://www.lololyrics.com/)
+  * Song lyrics from [Genius](https://genius.com/), [Musixmatch](https://www.musixmatch.com/), [ChartLyrics](http://www.chartlyrics.com/), [lyrics.ovh](https://lyrics.ovh/), [lololyrics.com](https://www.lololyrics.com/), [songlyrics.com](https://www.songlyrics.com/), [azlyrics.com](https://www.azlyrics.com/), [elyrics.net](https://www.elyrics.net/) and [lyricsmode.com](https://www.lyricsmode.com/)
   * Support for multiple backends
   * Audio analyzer
   * Audio equalizer
@@ -68,7 +71,7 @@ Funding developers is a way to contribute to open source projects you appreciate
 
 It has so far been tested to work on Linux, OpenBSD, FreeBSD, macOS and Windows.
 
-**There currently isn't any macOS developers actively working on this project, so we might not be able to help you with issues related to macOS.**
+**macOS releases are currently limited to sponsors. This is because macOS releases require a developer account, Apple hardware and maintaining all libraries strawberry depends on. If you are sponsoring strawberry, e-mail support@strawberrymusicplayer.org for access to downloads.**
 
 ### :heavy_exclamation_mark: Requirements
 
@@ -85,7 +88,6 @@ To build Strawberry from source you need the following installed on your system 
 * [ALSA (Required on Linux)](https://www.alsa-project.org/)
 * [D-Bus (Required on Linux)](https://www.freedesktop.org/wiki/Software/dbus/)
 * [GStreamer](https://gstreamer.freedesktop.org/) or [VLC](https://www.videolan.org)
-* [GnuTLS](https://www.gnutls.org/)
 * [TagLib 1.11.1 or higher](https://www.taglib.org/) or [TagParser](https://github.com/Martchus/tagparser)
 * [ICU](https://unicode-org.github.io/icu/)
 
@@ -97,6 +99,7 @@ Optional dependencies:
 * Audio CD: [libcdio](https://www.gnu.org/software/libcdio/)
 * MTP devices: [libmtp](http://libmtp.sourceforge.net/)
 * iPod Classic devices: [libgpod](http://www.gtkpod.org/libgpod/)
+* EBU R 128 loudness normalization [libebur128](https://github.com/jiixyj/libebur128)
 
 You should also install the gstreamer plugins base and good, and optionally bad, ugly and libav to support all audio formats.
 

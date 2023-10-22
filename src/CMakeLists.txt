@@ -57,6 +57,7 @@ set(SOURCES
   utilities/filemanagerutils.cpp
   utilities/coverutils.cpp
   utilities/screenutils.cpp
+  utilities/searchparserutils.cpp
 
   engine/enginebase.cpp
   engine/enginedevice.cpp
@@ -112,6 +113,7 @@ set(SOURCES
   playlist/playlisttabbar.cpp
   playlist/playlistundocommands.cpp
   playlist/playlistview.cpp
+  playlist/playlistproxystyle.cpp
   playlist/songloaderinserter.cpp
   playlist/songplaylistitem.cpp
   playlist/dynamicplaylistcontrols.cpp
@@ -177,12 +179,16 @@ set(SOURCES
   lyrics/lyricsfetcher.cpp
   lyrics/lyricsfetchersearch.cpp
   lyrics/jsonlyricsprovider.cpp
+  lyrics/htmllyricsprovider.cpp
   lyrics/ovhlyricsprovider.cpp
   lyrics/lololyricsprovider.cpp
   lyrics/geniuslyricsprovider.cpp
   lyrics/musixmatchlyricsprovider.cpp
   lyrics/chartlyricsprovider.cpp
-  lyrics/lyricscomlyricsprovider.cpp
+  lyrics/songlyricscomlyricsprovider.cpp
+  lyrics/azlyricscomlyricsprovider.cpp
+  lyrics/elyricsnetlyricsprovider.cpp
+  lyrics/lyricsmodecomlyricsprovider.cpp
 
   providers/musixmatchprovider.cpp
 
@@ -269,6 +275,7 @@ set(SOURCES
   radios/radioparadiseservice.cpp
 
   scrobbler/audioscrobbler.cpp
+  scrobbler/scrobblersettings.cpp
   scrobbler/scrobblerservice.cpp
   scrobbler/scrobblercache.cpp
   scrobbler/scrobblercacheitem.cpp
@@ -353,6 +360,7 @@ set(HEADERS
   playlist/playlistsequence.h
   playlist/playlisttabbar.h
   playlist/playlistview.h
+  playlist/playlistproxystyle.h
   playlist/playlistitemmimedata.h
   playlist/songloaderinserter.h
   playlist/songmimedata.h
@@ -414,12 +422,16 @@ set(HEADERS
   lyrics/lyricsfetcher.h
   lyrics/lyricsfetchersearch.h
   lyrics/jsonlyricsprovider.h
+  lyrics/htmllyricsprovider.h
   lyrics/ovhlyricsprovider.h
   lyrics/lololyricsprovider.h
   lyrics/geniuslyricsprovider.h
   lyrics/musixmatchlyricsprovider.h
   lyrics/chartlyricsprovider.h
-  lyrics/lyricscomlyricsprovider.h
+  lyrics/songlyricscomlyricsprovider.h
+  lyrics/azlyricscomlyricsprovider.h
+  lyrics/elyricsnetlyricsprovider.h
+  lyrics/lyricsmodecomlyricsprovider.h
 
   settings/settingsdialog.h
   settings/settingspage.h
@@ -502,6 +514,7 @@ set(HEADERS
   radios/radioparadiseservice.h
 
   scrobbler/audioscrobbler.h
+  scrobbler/scrobblersettings.h
   scrobbler/scrobblerservice.h
   scrobbler/scrobblercache.h
   scrobbler/scrobblingapi20.h
@@ -591,7 +604,6 @@ set(UI
 )
 
 set(RESOURCES ../data/data.qrc ../data/icons.qrc)
-set(OTHER_SOURCES)
 
 option(USE_INSTALL_PREFIX "Look for data in CMAKE_INSTALL_PREFIX" ON)
 
@@ -927,6 +939,11 @@ optional_source(HAVE_MOODBAR
     settings/moodbarsettingspage.ui
 )
 
+# EBU R 128
+optional_source(HAVE_EBUR128
+  SOURCES engine/ebur128analysis.cpp
+)
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.h.in ${CMAKE_CURRENT_BINARY_DIR}/version.h)
 
@@ -958,8 +975,7 @@ if(HAVE_TRANSLATIONS)
     ${SOURCES}
     ${MOC}
     ${UIC}
-    ${OTHER_SOURCES}
-    ../data/html/oauthsuccess.html
+    ${CMAKE_SOURCE_DIR}/data/html/oauthsuccess.html
   )
   add_po(PO strawberry_ LANGUAGES ${LANGUAGES} DIRECTORY translations)
 
@@ -969,7 +985,6 @@ link_directories(
   ${Boost_LIBRARY_DIRS}
   ${GLIB_LIBRARY_DIRS}
   ${GOBJECT_LIBRARY_DIRS}
-  ${GNUTLS_LIBRARY_DIRS}
   ${SQLITE_LIBRARY_DIRS}
   ${PROTOBUF_LIBRARY_DIRS}
   ${SINGLEAPPLICATION_LIBRARY_DIRS}
@@ -1062,7 +1077,6 @@ target_include_directories(strawberry_lib SYSTEM PUBLIC
   ${Boost_INCLUDE_DIRS}
   ${GLIB_INCLUDE_DIRS}
   ${GOBJECT_INCLUDE_DIRS}
-  ${GNUTLS_INCLUDE_DIRS}
   ${SQLITE_INCLUDE_DIRS}
   ${PROTOBUF_INCLUDE_DIRS}
 )
@@ -1086,14 +1100,26 @@ target_link_libraries(strawberry_lib PUBLIC
   ${CMAKE_THREAD_LIBS_INIT}
   ${GLIB_LIBRARIES}
   ${GOBJECT_LIBRARIES}
-  ${GNUTLS_LIBRARIES}
   ${SQLITE_LIBRARIES}
-  ${QT_LIBRARIES}
+  Qt${QT_VERSION_MAJOR}::Core
+  Qt${QT_VERSION_MAJOR}::Concurrent
+  Qt${QT_VERSION_MAJOR}::Gui
+  Qt${QT_VERSION_MAJOR}::Widgets
+  Qt${QT_VERSION_MAJOR}::Network
+  Qt${QT_VERSION_MAJOR}::Sql
   ${Protobuf_LIBRARIES}
   ${SINGLEAPPLICATION_LIBRARIES}
   libstrawberry-common
   libstrawberry-tagreader
 )
+
+if(HAVE_DBUS)
+  target_link_libraries(strawberry_lib PUBLIC Qt${QT_VERSION_MAJOR}::DBus)
+endif()
+
+if(HAVE_X11_GLOBALSHORTCUTS AND HAVE_X11EXTRAS)
+  target_link_libraries(strawberry_lib PUBLIC Qt${QT_VERSION_MAJOR}::X11Extras)
+endif()
 
 if(HAVE_ICU)
   target_include_directories(strawberry_lib SYSTEM PRIVATE ${ICU_INCLUDE_DIRS})
@@ -1147,6 +1173,10 @@ endif()
 if(HAVE_SONGFINGERPRINTING OR HAVE_MUSICBRAINZ)
   target_include_directories(strawberry_lib SYSTEM PRIVATE ${CHROMAPRINT_INCLUDE_DIRS})
   target_link_libraries(strawberry_lib PRIVATE ${CHROMAPRINT_LIBRARIES})
+endif()
+
+if(HAVE_EBUR128)
+  target_link_libraries(strawberry_lib PRIVATE PkgConfig::LIBEBUR128)
 endif()
 
 if(X11_FOUND)

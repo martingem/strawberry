@@ -21,12 +21,11 @@
 #define MUSIXMATCHPROVIDER_H
 
 #include <QString>
-#include <QRegularExpression>
 
 class MusixmatchProvider {
 
  protected:
-  QString StringFixup(QString string);
+  QString StringFixup(QString text);
 
  protected:
   static const char *kApiUrl;

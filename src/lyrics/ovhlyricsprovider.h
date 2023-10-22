@@ -28,6 +28,7 @@
 #include <QVariant>
 #include <QString>
 
+#include "core/shared_ptr.h"
 #include "jsonlyricsprovider.h"
 #include "lyricssearchrequest.h"
 
@@ -38,7 +39,7 @@ class OVHLyricsProvider : public JsonLyricsProvider {
   Q_OBJECT
 
  public:
-  explicit OVHLyricsProvider(NetworkAccessManager *network, QObject *parent = nullptr);
+  explicit OVHLyricsProvider(SharedPtr<NetworkAccessManager> network, QObject *parent = nullptr);
   ~OVHLyricsProvider() override;
 
   bool StartSearch(const int id, const LyricsSearchRequest &request) override;
@@ -53,7 +54,6 @@ class OVHLyricsProvider : public JsonLyricsProvider {
  private:
   static const char *kUrlSearch;
   QList<QNetworkReply*> replies_;
-
 };
 
 #endif  // OVHLYRICSPROVIDER_H

@@ -25,11 +25,8 @@
 #include <QVariant>
 
 #include "internetplaylistitem.h"
-#include "internetservices.h"
 #include "internetservice.h"
-#include "core/settingsprovider.h"
 #include "core/sqlrow.h"
-#include "playlist/playlistbackend.h"
 
 InternetPlaylistItem::InternetPlaylistItem(const Song::Source source)
     : PlaylistItem(source),
@@ -42,7 +39,7 @@ InternetPlaylistItem::InternetPlaylistItem(const Song &metadata)
   InitMetadata();
 }
 
-InternetPlaylistItem::InternetPlaylistItem(InternetService *service, const Song &metadata)
+InternetPlaylistItem::InternetPlaylistItem(InternetServicePtr service, const Song &metadata)
     : PlaylistItem(metadata.source()),
       source_(service->source()),
       metadata_(metadata) {

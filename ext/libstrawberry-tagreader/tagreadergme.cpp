@@ -98,9 +98,8 @@ void GME::SPC::Read(const QFileInfo &file_info, spb::tagreader::SongMetadata *so
 
   file.seek(INTRO_LENGTH_OFFSET);
   QByteArray length_bytes = file.read(INTRO_LENGTH_SIZE);
-  quint64 length_in_sec = 0;
   if (length_bytes.size() >= INTRO_LENGTH_SIZE) {
-    length_in_sec = ConvertSPCStringToNum(length_bytes);
+    quint64 length_in_sec = ConvertSPCStringToNum(length_bytes);
 
     if (!length_in_sec || length_in_sec >= 0x1FFF) {
       // This means that parsing the length as a string failed, so get value LE.
@@ -120,6 +119,7 @@ void GME::SPC::Read(const QFileInfo &file_info, spb::tagreader::SongMetadata *so
     if (fade_length_in_ms > 0x7FFF) {
       fade_length_in_ms = fade_bytes[0] | (fade_bytes[1] << 8) | (fade_bytes[2] << 16) | (fade_bytes[3] << 24);
     }
+    Q_UNUSED(fade_length_in_ms)
   }
 
   // Check for XID6 data -- this is infrequently used, but being able to fill in data from this is ideal before trying to rely on APETAG values.
@@ -141,7 +141,7 @@ void GME::SPC::Read(const QFileInfo &file_info, spb::tagreader::SongMetadata *so
         qint8 type = arr[1];
         Q_UNUSED(id);
         Q_UNUSED(type);
-        qint16 length = arr[2] | (arr[3] << 8);
+        qint16 length = static_cast<qint16>(arr[2] | (arr[3] << 8));
 
         file.read(GetNextMemAddressAlign32bit(length));
       }
@@ -161,8 +161,8 @@ void GME::SPC::Read(const QFileInfo &file_info, spb::tagreader::SongMetadata *so
     TagReaderTagLib::TStringToStdString(tag->album(), song_info->mutable_album());
     TagReaderTagLib::TStringToStdString(tag->title(), song_info->mutable_title());
     TagReaderTagLib::TStringToStdString(tag->genre(), song_info->mutable_genre());
-    song_info->set_track(tag->track());
-    song_info->set_year(tag->year());
+    song_info->set_track(static_cast<std::int32_t>(tag->track()));
+    song_info->set_year(static_cast<std::int32_t>(tag->year()));
   }
 
   song_info->set_valid(true);
@@ -171,7 +171,7 @@ void GME::SPC::Read(const QFileInfo &file_info, spb::tagreader::SongMetadata *so
 }
 
 qint16 GME::SPC::GetNextMemAddressAlign32bit(qint16 input) {
-  return ((input + 0x3) & ~0x3);
+  return static_cast<qint16>((input + 0x3) & ~0x3);
   // Plus 0x3 for rounding up (not down), AND NOT to flatten out on a 32 bit level.
 }
 
@@ -211,7 +211,7 @@ void GME::VGM::Read(const QFileInfo &file_info, spb::tagreader::SongMetadata *so
 
   if (!GetPlaybackLength(sample_count_bytes, loop_count_bytes, length)) return;
 
-  file.seek(GD3_TAG_PTR + pt);
+  file.seek(static_cast<qint64>(GD3_TAG_PTR + pt));
   QByteArray gd3_version = file.read(4);
 
   file.seek(file.pos() + 4);
@@ -249,11 +249,11 @@ bool GME::VGM::GetPlaybackLength(const QByteArray &sample_count_bytes, const QBy
 
   quint64 sample_count = GME::UnpackBytes32(sample_count_bytes.constData(), sample_count_bytes.size());
 
-  if (sample_count <= 0) return false;
+  if (sample_count == 0) return false;
 
   quint64 loop_sample_count = GME::UnpackBytes32(loop_count_bytes.constData(), loop_count_bytes.size());
 
-  if (loop_sample_count <= 0) {
+  if (loop_sample_count == 0) {
     out_length = sample_count * 1000 / SAMPLE_TIMEBASE;
     return true;
   }

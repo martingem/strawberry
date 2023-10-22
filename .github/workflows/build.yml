@@ -4,6 +4,7 @@ on: [push,workflow_dispatch]
 jobs:
   build-ubuntu:
     name: Build Ubuntu
+    if: github.repository != 'strawberrymusicplayer/strawberry-private'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -41,7 +42,6 @@ jobs:
             libprotobuf-dev
             protobuf-compiler
             libsqlite3-dev
-            libgnutls28-dev
             libasound2-dev
             libpulse-dev
             libtag1-dev
@@ -52,6 +52,7 @@ jobs:
             gstreamer1.0-alsa
             gstreamer1.0-pulseaudio
             libchromaprint-dev
+            libebur128-dev
             libfftw3-dev
             libcdio-dev
             libmtp-dev
@@ -61,9 +62,10 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: apt install -y qtbase5-dev qtbase5-dev-tools qttools5-dev qttools5-dev-tools libqt5x11extras5-dev
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
       - name: Add safe git directory
         run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
       - name: Create Build Environment
@@ -82,14 +84,14 @@ jobs:
             *.deb
             *.ddeb
       - name: SSH key setup
-        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci'
+        if: github.repository == 'strawberrymusicplayer/strawberry' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci')
         uses: shimataro/ssh-key-action@v2
         with:
           known_hosts: ${{secrets.SSH_KNOWN_HOSTS}}
           key: ${{ secrets.SSH_KEY }}
       - name: Create server path
-        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci'
+        if: github.repository == 'strawberrymusicplayer/strawberry' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci')
         run: ssh -p ${{secrets.SSH_PORT}} -o StrictHostKeyChecking=no ${{secrets.SSH_USER}}@${{secrets.SSH_HOST}} mkdir -p ${{secrets.BUILDS_PATH}}/ubuntu/${{matrix.ubuntu_version}}
       - name: rsync
-        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci'
+        if: github.repository == 'strawberrymusicplayer/strawberry' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci')
         run: rsync -e "ssh -p ${{secrets.SSH_PORT}} -o StrictHostKeyChecking=no" -var *.deb *.ddeb ${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}:${{secrets.BUILDS_PATH}}/ubuntu/${{matrix.ubuntu_version}}/

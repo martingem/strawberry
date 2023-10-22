@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include <QMetaType>
 #include <QList>
 #include <QDataStream>
 #include <QVariant>
@@ -132,7 +133,6 @@ class SmartPlaylistSearchTerm {
   static QString FieldColumnName(const Field field);
   static QString FieldSortOrderText(const Type type, const bool ascending);
   static QString DateName(const DateType datetype, const bool forQuery);
-
 };
 
 QDataStream &operator<<(QDataStream &s, const SmartPlaylistSearchTerm &term);

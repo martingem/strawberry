@@ -133,11 +133,25 @@ const QStringList Song::kColumns = QStringList() << "title"
                                                  << "musicbrainz_release_group_id"
                                                  << "musicbrainz_work_id"
 
+                                                 << "ebur128_integrated_loudness_lufs"
+                                                 << "ebur128_loudness_range_lu"
+
 						 ;
 
 const QString Song::kColumnSpec = Song::kColumns.join(", ");
 const QString Song::kBindSpec = Utilities::Prepend(":", Song::kColumns).join(", ");
 const QString Song::kUpdateSpec = Utilities::Updateify(Song::kColumns).join(", ");
+
+// used to indicate, what columns can be filtered numerically. Used by the CollectionQuery.
+const QStringList Song::kNumericalColumns = QStringList() << "year"
+                                                          << "length"
+                                                          << "samplerate"
+                                                          << "bitdepth"
+                                                          << "bitrate"
+                                                          << "rating"
+                                                          << "playcount"
+                                                          << "skipcount";
+
 
 const QStringList Song::kFtsColumns = QStringList() << "ftstitle"
                                                     << "ftsalbum"
@@ -242,6 +256,9 @@ struct Song::Private : public QSharedData {
   QString musicbrainz_disc_id_;
   QString musicbrainz_release_group_id_;
   QString musicbrainz_work_id_;
+
+  std::optional<double> ebur128_integrated_loudness_lufs_;
+  std::optional<double> ebur128_loudness_range_lu_;
 
   bool init_from_file_;         // Whether this song was loaded from a file using taglib.
   bool suspicious_tags_;        // Whether our encoding guesser thinks these tags might be incorrectly encoded.
@@ -391,6 +408,9 @@ const QString &Song::musicbrainz_disc_id() const { return d->musicbrainz_disc_id
 const QString &Song::musicbrainz_release_group_id() const { return d->musicbrainz_release_group_id_; }
 const QString &Song::musicbrainz_work_id() const { return d->musicbrainz_work_id_; }
 
+std::optional<double> Song::ebur128_integrated_loudness_lufs() const { return d->ebur128_integrated_loudness_lufs_; }
+std::optional<double> Song::ebur128_loudness_range_lu() const { return d->ebur128_loudness_range_lu_; }
+
 bool Song::init_from_file() const { return d->init_from_file_; }
 
 const QString &Song::title_sortable() const { return d->title_sortable_; }
@@ -474,6 +494,9 @@ void Song::set_musicbrainz_track_id(const QString &v) { d->musicbrainz_track_id_
 void Song::set_musicbrainz_disc_id(const QString &v) { d->musicbrainz_disc_id_ = v; }
 void Song::set_musicbrainz_release_group_id(const QString &v) { d->musicbrainz_release_group_id_ = v; }
 void Song::set_musicbrainz_work_id(const QString &v) { d->musicbrainz_work_id_ = v; }
+
+void Song::set_ebur128_integrated_loudness_lufs(const std::optional<double> v) { d->ebur128_integrated_loudness_lufs_ = v; }
+void Song::set_ebur128_loudness_range_lu(const std::optional<double> v) { d->ebur128_loudness_range_lu_ = v; }
 
 void Song::set_stream_url(const QUrl &v) { d->stream_url_ = v; }
 
@@ -673,6 +696,30 @@ QString Song::SampleRateBitDepthToText() const {
 
 }
 
+QString Song::Ebur128LoudnessLUFSToText(const std::optional<double> v) {
+
+  if (!v) return QObject::tr("Unknown");
+
+  return QString::asprintf("%+.2f ", *v) + QObject::tr("LUFS");
+
+}
+
+QString Song::Ebur128LoudnessLUFSToText() const {
+  return Ebur128LoudnessLUFSToText(d->ebur128_integrated_loudness_lufs_);
+}
+
+QString Song::Ebur128LoudnessRangeLUToText(const std::optional<double> v) {
+
+  if (!v) return QObject::tr("Unknown");
+
+  return QString::asprintf("%.2f ", *v) + QObject::tr("LU");
+
+}
+
+QString Song::Ebur128LoudnessRangeLUToText() const {
+  return Ebur128LoudnessRangeLUToText(d->ebur128_loudness_range_lu_);
+}
+
 QString Song::PrettyRating() const {
 
   float rating = d->rating_;
@@ -753,6 +800,13 @@ bool Song::IsMusicBrainzEqual(const Song &other) const {
     d->musicbrainz_disc_id_ == other.d->musicbrainz_disc_id_ &&
     d->musicbrainz_release_group_id_ == other.d->musicbrainz_release_group_id_ &&
     d->musicbrainz_work_id_ == other.d->musicbrainz_work_id_;
+
+}
+
+bool Song::IsEBUR128Equal(const Song &other) const {
+
+  return d->ebur128_integrated_loudness_lufs_ == other.d->ebur128_integrated_loudness_lufs_ &&
+    d->ebur128_loudness_range_lu_ == other.d->ebur128_loudness_range_lu_;
 
 }
 
@@ -898,7 +952,7 @@ QString Song::TextForFiletype(const FileType filetype) {
     case FileType::OggVorbis:   return "Ogg Vorbis";
     case FileType::OggOpus:     return "Ogg Opus";
     case FileType::OggSpeex:    return "Ogg Speex";
-    case FileType::MPEG:        return "MP3";
+    case FileType::MPEG:        return "MPEG";
     case FileType::MP4:         return "MP4 AAC";
     case FileType::ASF:         return "Windows Media audio";
     case FileType::AIFF:        return "AIFF";
@@ -1019,6 +1073,7 @@ Song::FileType Song::FiletypeByMimetype(const QString &mimetype) {
   else if (mimetype.compare("audio/aac", Qt::CaseInsensitive) == 0) return FileType::MP4;
   else if (mimetype.compare("audio/x-wma", Qt::CaseInsensitive) == 0) return FileType::ASF;
   else if (mimetype.compare("audio/aiff", Qt::CaseInsensitive) == 0 || mimetype.compare("audio/x-aiff", Qt::CaseInsensitive) == 0) return FileType::AIFF;
+  else if (mimetype.compare("audio/x-musepack", Qt::CaseInsensitive) == 0) return FileType::MPC;
   else if (mimetype.compare("application/x-project", Qt::CaseInsensitive) == 0) return FileType::MPC;
   else if (mimetype.compare("audio/x-dsf", Qt::CaseInsensitive) == 0) return FileType::DSF;
   else if (mimetype.compare("audio/x-dsd", Qt::CaseInsensitive) == 0) return FileType::DSDIFF;
@@ -1040,11 +1095,13 @@ Song::FileType Song::FiletypeByDescription(const QString &text) {
   else if (text.compare("Vorbis", Qt::CaseInsensitive) == 0) return FileType::OggVorbis;
   else if (text.compare("Opus", Qt::CaseInsensitive) == 0) return FileType::OggOpus;
   else if (text.compare("Speex", Qt::CaseInsensitive) == 0) return FileType::OggSpeex;
+  else if (text.compare("MPEG-1 Layer 2 (MP2)", Qt::CaseInsensitive) == 0) return FileType::MPEG;
   else if (text.compare("MPEG-1 Layer 3 (MP3)", Qt::CaseInsensitive) == 0) return FileType::MPEG;
   else if (text.compare("MPEG-4 AAC", Qt::CaseInsensitive) == 0) return FileType::MP4;
   else if (text.compare("WMA", Qt::CaseInsensitive) == 0) return FileType::ASF;
   else if (text.compare("Audio Interchange File Format", Qt::CaseInsensitive) == 0) return FileType::AIFF;
   else if (text.compare("MPC", Qt::CaseInsensitive) == 0) return FileType::MPC;
+  else if (text.compare("Musepack (MPC)", Qt::CaseInsensitive) == 0) return FileType::MPC;
   else if (text.compare("audio/x-dsf", Qt::CaseInsensitive) == 0) return FileType::DSF;
   else if (text.compare("audio/x-dsd", Qt::CaseInsensitive) == 0) return FileType::DSDIFF;
   else if (text.compare("audio/x-ffmpeg-parsed-ape", Qt::CaseInsensitive) == 0) return FileType::APE;
@@ -1064,6 +1121,7 @@ Song::FileType Song::FiletypeByExtension(const QString &ext) {
   else if (ext.compare("ogg", Qt::CaseInsensitive) == 0 || ext.compare("oga", Qt::CaseInsensitive) == 0) return FileType::OggVorbis;
   else if (ext.compare("opus", Qt::CaseInsensitive) == 0) return FileType::OggOpus;
   else if (ext.compare("speex", Qt::CaseInsensitive) == 0 || ext.compare("spx", Qt::CaseInsensitive) == 0) return FileType::OggSpeex;
+  else if (ext.compare("mp2", Qt::CaseInsensitive) == 0) return FileType::MPEG;
   else if (ext.compare("mp3", Qt::CaseInsensitive) == 0) return FileType::MPEG;
   else if (ext.compare("mp4", Qt::CaseInsensitive) == 0 || ext.compare("m4a", Qt::CaseInsensitive) == 0 || ext.compare("aac", Qt::CaseInsensitive) == 0) return FileType::MP4;
   else if (ext.compare("asf", Qt::CaseInsensitive) == 0 || ext.compare("wma", Qt::CaseInsensitive) == 0) return FileType::ASF;
@@ -1292,6 +1350,12 @@ void Song::InitFromQuery(const SqlRow &q, const bool reliable_metadata) {
   d->bitrate_ = q.ValueToInt("bitrate");
   d->samplerate_ = q.ValueToInt("samplerate");
   d->bitdepth_ = q.ValueToInt("bitdepth");
+  if (!q.value("ebur128_integrated_loudness_lufs").isNull()) {
+    d->ebur128_integrated_loudness_lufs_ = q.value("ebur128_integrated_loudness_lufs").toDouble();
+  }
+  if (!q.value("ebur128_loudness_range_lu").isNull()) {
+    d->ebur128_loudness_range_lu_ = q.value("ebur128_loudness_range_lu").toDouble();
+  }
   d->source_ = static_cast<Source>(q.value("source").isNull() ? 0 : q.value("source").toInt());
   d->directory_id_ = q.ValueToInt("directory_id");
   set_url(QUrl::fromEncoded(q.ValueToString("url").toUtf8()));
@@ -1642,6 +1706,9 @@ void Song::BindToQuery(SqlQuery *query) const {
   query->BindStringValue(":musicbrainz_disc_id", d->musicbrainz_disc_id_);
   query->BindStringValue(":musicbrainz_release_group_id", d->musicbrainz_release_group_id_);
   query->BindStringValue(":musicbrainz_work_id", d->musicbrainz_work_id_);
+
+  query->BindDoubleOrNullValue(":ebur128_integrated_loudness_lufs", d->ebur128_integrated_loudness_lufs_);
+  query->BindDoubleOrNullValue(":ebur128_loudness_range_lu", d->ebur128_loudness_range_lu_);
 
 }
 

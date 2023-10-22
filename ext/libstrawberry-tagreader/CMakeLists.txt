@@ -6,7 +6,7 @@ if(NOT protobuf_PROTOC_EXE)
 endif()
 
 if(NOT Protobuf_LIBRARIES)
-  set(Protobuf_LIBRARIES protobuf::libprotobuf protobuf::libprotoc)
+  set(Protobuf_LIBRARIES protobuf::libprotobuf)
 endif()
 
 set(SOURCES tagreaderbase.cpp tagreadermessages.proto)
@@ -50,9 +50,9 @@ target_include_directories(libstrawberry-tagreader PRIVATE
 target_link_libraries(libstrawberry-tagreader PRIVATE
   ${GLIB_LIBRARIES}
   ${Protobuf_LIBRARIES}
-  ${QtCore_LIBRARIES}
-  ${QtNetwork_LIBRARIES}
-  ${QtGui_LIBRARIES}
+  Qt${QT_VERSION_MAJOR}::Core
+  Qt${QT_VERSION_MAJOR}::Network
+  Qt${QT_VERSION_MAJOR}::Gui
   libstrawberry-common
 )
 

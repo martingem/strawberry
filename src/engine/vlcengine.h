@@ -24,12 +24,16 @@
 
 #include "config.h"
 
+#include <optional>
+
 #include <vlc/vlc.h>
 
 #include <QtGlobal>
 #include <QObject>
 #include <QString>
 #include <QUrl>
+
+#include "core/shared_ptr.h"
 
 #include "enginebase.h"
 
@@ -41,13 +45,13 @@ class VLCEngine : public EngineBase {
   Q_OBJECT
 
  public:
-  explicit VLCEngine(TaskManager *task_manager, QObject *parent = nullptr);
+  explicit VLCEngine(SharedPtr<TaskManager> task_manager, QObject *parent = nullptr);
   ~VLCEngine() override;
 
   Type type() const override { return Type::VLC; }
   bool Init() override;
   EngineBase::State state() const override { return state_; }
-  bool Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec) override;
+  bool Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_nanosec, const qint64 end_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs) override;
   bool Play(const quint64 offset_nanosec) override;
   void Stop(const bool stop_after = false) override;
   void Pause() override;
@@ -80,7 +84,6 @@ class VLCEngine : public EngineBase {
   static void StateChangedCallback(const libvlc_event_t *e, void *data);
 
   void GetDevicesList(const QString &output) const;
-
 };
 
 #endif  // VLCENGINE_H
