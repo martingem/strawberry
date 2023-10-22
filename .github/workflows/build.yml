@@ -79,7 +79,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ubuntu-${{matrix.ubuntu_version}}
+          name: ubuntu-${{matrix.ubuntu_version}}-qt5
           path: |
             *.deb
             *.ddeb
